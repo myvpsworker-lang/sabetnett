@@ -104,8 +104,16 @@ jobs:
       run: |
         KS_FILE="$RUNNER_TEMP/release.jks"
         if [ -n "$KS_B64" ]; then
-          printf '%s' "$KS_B64" | base64 -d > "$KS_FILE"
-          KS_PASS="$SECRET_KS_PASS"; KS_ALIAS="$SECRET_KS_ALIAS"; KEY_PASS="$SECRET_KEY_PASS"
+          # Secrets are often pasted with stray spaces or line breaks; strip them before use.
+          printf '%s' "$KS_B64" | tr -d ' \r\n\t' | base64 -d > "$KS_FILE" \
+            || { echo "::error::APP_KEYSTORE_BASE64 is not valid base64. Paste the whole single line from keystore_base64.txt."; exit 1; }
+          KS_PASS=$(printf '%s' "$SECRET_KS_PASS" | tr -d '\r\n')
+          KS_ALIAS=$(printf '%s' "$SECRET_KS_ALIAS" | tr -d ' \r\n')
+          KEY_PASS=$(printf '%s' "$SECRET_KEY_PASS" | tr -d '\r\n')
+          if ! keytool -list -keystore "$KS_FILE" -storepass "$KS_PASS" -alias "$KS_ALIAS" >/dev/null 2>&1; then
+            echo "::error::Cannot open the keystore. Check APP_KEYSTORE_PASSWORD, APP_KEYSTORE_ALIAS (novanet) and APP_KEYSTORE_BASE64."
+            exit 1
+          fi
         else
           echo "::warning::No signing secrets configured, using a temporary key. Each build gets a different signature, so a new APK can only be installed after uninstalling the previous one. Add the APP_KEYSTORE_* secrets to fix this."
           KS_PASS="novanet-temp-pass"; KS_ALIAS="novanet"; KEY_PASS="$KS_PASS"
