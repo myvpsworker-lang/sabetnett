@@ -1,4 +1,4 @@
-name: Build NovaNet APK
+name: Build SabetNet APK
 
 on:
   workflow_dispatch:
@@ -118,7 +118,7 @@ jobs:
           echo "::warning::No signing secrets configured, using a temporary key. Each build gets a different signature, so a new APK can only be installed after uninstalling the previous one. Add the APP_KEYSTORE_* secrets to fix this."
           KS_PASS="novanet-temp-pass"; KS_ALIAS="novanet"; KEY_PASS="$KS_PASS"
           keytool -genkeypair -keystore "$KS_FILE" -storepass "$KS_PASS" -keypass "$KEY_PASS" \
-            -alias "$KS_ALIAS" -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=NovaNet"
+            -alias "$KS_ALIAS" -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=SabetNet"
         fi
         {
           echo "KS_FILE=$KS_FILE"
@@ -143,5 +143,5 @@ jobs:
       uses: actions/upload-artifact@v7
       if: ${{ success() }}
       with:
-        name: NovaNet-apks
+        name: SabetNet-apks
         path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/playstore/release/*.apk
