@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -92,20 +91,14 @@ fun MainDrawerContent(drawerState: DrawerState, onNavigate: (MainDestination) ->
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    // The launcher foreground is a white glyph, so it sits on its own gradient tile
-                    // (visible in both light and dark themes).
+                    // The launcher foreground is the logo on a white field, so it sits on a white rounded
+                    // tile (visible in both light and dark themes); the image is larger than the tile
+                    // so only its centre (the logo) shows.
                     Box(
                         modifier = Modifier
                             .size(88.dp)
                             .clip(RoundedCornerShape(26.dp))
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(
-                                        MaterialTheme.colorScheme.primary,
-                                        MaterialTheme.colorScheme.secondary
-                                    )
-                                )
-                            ),
+                            .background(androidx.compose.ui.graphics.Color.White),
                         contentAlignment = Alignment.Center
                     ) {
                         Image(

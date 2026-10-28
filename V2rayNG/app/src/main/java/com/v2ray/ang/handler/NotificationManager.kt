@@ -8,6 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.Build
+import android.view.View
+import android.widget.RemoteViews
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import com.v2ray.ang.AppConfig
@@ -24,7 +26,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlin.math.min
 
 object NotificationManager {
     private const val NOTIFICATION_ID = 1
@@ -33,11 +34,26 @@ object NotificationManager {
     private const val NOTIFICATION_PENDING_INTENT_RESTART_V2RAY = 2
     private const val NOTIFICATION_ICON_THRESHOLD = 3000
     private const val QUERY_INTERVAL_MS = 3000L
+    private const val ACCENT_COLOR = 0xFF4F5BD5.toInt()
 
     private var lastQueryTime = 0L
     private var mBuilder: NotificationCompat.Builder? = null
     private var speedNotificationJob: Job? = null
     private var mNotificationManager: NotificationManager? = null
+
+    // Content shown by the custom notification layouts; kept so every refresh rebuilds identical views.
+    private var currentTitle: String = ""
+    private var stopPendingIntent: PendingIntent? = null
+    private var restartPendingIntent: PendingIntent? = null
+    private var lastSpeed: SpeedSnapshot? = null
+
+    /** Per-second traffic (bytes) for the proxy and direct outbounds. */
+    private data class SpeedSnapshot(
+        val proxyUp: Long,
+        val proxyDown: Long,
+        val directUp: Long,
+        val directDown: Long
+    )
 
     /**
      * Starts the speed notification.
@@ -82,6 +98,11 @@ object NotificationManager {
         restartV2RayIntent.putExtra("key", AppConfig.MSG_STATE_RESTART)
         val restartV2RayPendingIntent = PendingIntent.getBroadcast(service, NOTIFICATION_PENDING_INTENT_RESTART_V2RAY, restartV2RayIntent, flags)
 
+        stopPendingIntent = stopV2RayPendingIntent
+        restartPendingIntent = restartV2RayPendingIntent
+        currentTitle = currentConfig?.remarks ?: service.getString(R.string.app_name)
+        lastSpeed = null
+
         val channelId =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 createNotificationChannel()
@@ -93,22 +114,16 @@ object NotificationManager {
 
         mBuilder = NotificationCompat.Builder(service, channelId)
             .setSmallIcon(R.drawable.ic_stat_name)
-            .setContentTitle(currentConfig?.remarks ?: service.getString(R.string.app_name))
+            .setColor(ACCENT_COLOR)
+            .setContentTitle(currentTitle)
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+            .setCustomContentView(buildContentViews(service, expanded = false))
+            .setCustomBigContentView(buildContentViews(service, expanded = true))
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .setShowWhen(false)
             .setOnlyAlertOnce(true)
             .setContentIntent(contentPendingIntent)
-            .addAction(
-                R.drawable.ic_delete_24dp,
-                service.getString(R.string.notification_action_stop_v2ray),
-                stopV2RayPendingIntent
-            )
-            .addAction(
-                R.drawable.ic_restore_24dp,
-                service.getString(R.string.title_service_restart),
-                restartV2RayPendingIntent
-            )
 
         //mBuilder?.setDefaults(NotificationCompat.FLAG_ONLY_ALERT_ONCE)
 
@@ -146,7 +161,7 @@ object NotificationManager {
         speedNotificationJob?.let {
             it.cancel()
             speedNotificationJob = null
-            updateNotification("", 0, 0)
+            updateNotification(null, 0, 0)
         }
     }
 
@@ -172,24 +187,65 @@ object NotificationManager {
     }
 
     /**
-     * Updates the notification with the given content text and traffic data.
-     * @param contentText The content text.
+     * Refreshes the notification with the latest traffic figures.
+     * @param speed The per-second traffic, or null to show no traffic (speed display disabled/stopped).
      * @param proxyTraffic The proxy traffic.
      * @param directTraffic The direct traffic.
      */
-    private fun updateNotification(contentText: String?, proxyTraffic: Long, directTraffic: Long) {
-        if (mBuilder != null) {
-            if (proxyTraffic < NOTIFICATION_ICON_THRESHOLD && directTraffic < NOTIFICATION_ICON_THRESHOLD) {
-                mBuilder?.setSmallIcon(R.drawable.ic_stat_name)
-            } else if (proxyTraffic > directTraffic) {
-                mBuilder?.setSmallIcon(R.drawable.ic_stat_proxy)
-            } else {
-                mBuilder?.setSmallIcon(R.drawable.ic_stat_direct)
-            }
-            mBuilder?.setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
-            mBuilder?.setContentText(contentText)
-            getNotificationManager()?.notify(NOTIFICATION_ID, mBuilder?.build())
+    private fun updateNotification(speed: SpeedSnapshot?, proxyTraffic: Long, directTraffic: Long) {
+        val builder = mBuilder ?: return
+        val service = getService() ?: return
+        if (proxyTraffic < NOTIFICATION_ICON_THRESHOLD && directTraffic < NOTIFICATION_ICON_THRESHOLD) {
+            builder.setSmallIcon(R.drawable.ic_stat_name)
+        } else if (proxyTraffic > directTraffic) {
+            builder.setSmallIcon(R.drawable.ic_stat_proxy)
+        } else {
+            builder.setSmallIcon(R.drawable.ic_stat_direct)
         }
+        lastSpeed = speed
+        builder.setCustomContentView(buildContentViews(service, expanded = false))
+        builder.setCustomBigContentView(buildContentViews(service, expanded = true))
+        getNotificationManager()?.notify(NOTIFICATION_ID, builder.build())
+    }
+
+    /**
+     * Builds the collapsed or expanded notification content.
+     * Only plain TextView/ImageView/LinearLayout views are used so the layouts stay valid for RemoteViews.
+     */
+    private fun buildContentViews(service: Service, expanded: Boolean): RemoteViews {
+        val views = RemoteViews(
+            service.packageName,
+            if (expanded) R.layout.notification_expanded else R.layout.notification_collapsed
+        )
+        val speed = lastSpeed
+        views.setTextViewText(R.id.notif_title, currentTitle)
+        views.setTextViewText(R.id.notif_stop, service.getString(R.string.notification_action_stop_v2ray))
+        stopPendingIntent?.let { views.setOnClickPendingIntent(R.id.notif_stop, it) }
+
+        if (expanded) {
+            views.setTextViewText(R.id.notif_app, service.getString(R.string.app_name))
+            views.setTextViewText(R.id.notif_restart, service.getString(R.string.title_service_restart))
+            restartPendingIntent?.let { views.setOnClickPendingIntent(R.id.notif_restart, it) }
+            views.setTextViewText(R.id.notif_proxy_label, AppConfig.TAG_PROXY.uppercase())
+            views.setTextViewText(R.id.notif_direct_label, AppConfig.TAG_DIRECT.uppercase())
+            if (speed == null) {
+                views.setViewVisibility(R.id.notif_stats, View.GONE)
+            } else {
+                views.setViewVisibility(R.id.notif_stats, View.VISIBLE)
+                views.setTextViewText(R.id.notif_proxy_up, "↑ ${speed.proxyUp.toSpeedString()}")
+                views.setTextViewText(R.id.notif_proxy_down, "↓ ${speed.proxyDown.toSpeedString()}")
+                views.setTextViewText(R.id.notif_direct_up, "↑ ${speed.directUp.toSpeedString()}")
+                views.setTextViewText(R.id.notif_direct_down, "↓ ${speed.directDown.toSpeedString()}")
+            }
+        } else {
+            val line = if (speed == null) {
+                service.getString(R.string.app_name)
+            } else {
+                "↑ ${speed.proxyUp.toSpeedString()}   ↓ ${speed.proxyDown.toSpeedString()}"
+            }
+            views.setTextViewText(R.id.notif_speed, line)
+        }
+        return views
     }
 
     /**
@@ -202,23 +258,6 @@ object NotificationManager {
             mNotificationManager = service.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         }
         return mNotificationManager
-    }
-
-    /**
-     * Appends the speed string to the given text.
-     * @param text The text to append to.
-     * @param name The name of the tag.
-     * @param up The uplink speed.
-     * @param down The downlink speed.
-     */
-    private fun appendSpeedString(text: StringBuilder, name: String?, up: Double, down: Double) {
-        var n = name ?: "no tag"
-        n = n.take(min(n.length, 6))
-        text.append(n)
-        for (i in n.length..6 step 2) {
-            text.append("\t")
-        }
-        text.append("•  ${up.toLong().toSpeedString()}↑  ${down.toLong().toSpeedString()}↓\n")
     }
 
     /**
@@ -267,19 +306,13 @@ object NotificationManager {
         val directTotal = directUplink + directDownlink
         val zeroSpeed = proxyTotal + directTotal == 0L
         if (!zeroSpeed || !lastZeroSpeed) {
-            val text = StringBuilder()
-            appendSpeedString(
-                text, AppConfig.TAG_PROXY,
-                proxyUplink / sinceLastQueryInSeconds,
-                proxyDownlink / sinceLastQueryInSeconds
+            val snapshot = SpeedSnapshot(
+                proxyUp = (proxyUplink / sinceLastQueryInSeconds).toLong(),
+                proxyDown = (proxyDownlink / sinceLastQueryInSeconds).toLong(),
+                directUp = (directUplink / sinceLastQueryInSeconds).toLong(),
+                directDown = (directDownlink / sinceLastQueryInSeconds).toLong()
             )
-
-            appendSpeedString(
-                text, AppConfig.TAG_DIRECT,
-                directUplink / sinceLastQueryInSeconds,
-                directDownlink / sinceLastQueryInSeconds
-            )
-            updateNotification(text.toString(), proxyTotal, directTotal)
+            updateNotification(snapshot, proxyTotal, directTotal)
         }
         lastQueryTime = queryTime
         return zeroSpeed
