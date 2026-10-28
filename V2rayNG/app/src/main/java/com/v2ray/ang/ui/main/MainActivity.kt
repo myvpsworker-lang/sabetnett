@@ -155,6 +155,10 @@ class MainActivity : HelperBaseComponentActivity() {
             MainDestination.CheckUpdate -> Intent(this, CheckUpdateActivity::class.java)
             MainDestination.BackupRestore -> Intent(this, BackupActivity::class.java)
             MainDestination.About -> Intent(this, AboutActivity::class.java)
+            MainDestination.Support -> {
+                mainViewModel.uiState.value.sponsorsContent.support?.let { openSubscriptionLink(it.url) }
+                return
+            }
             MainDestination.Promotion -> {
                 // Upstream's ad page is replaced by the sponsors the admin publishes.
                 mainViewModel.onAction(MainAction.ShowSponsors)
@@ -168,7 +172,8 @@ class MainActivity : HelperBaseComponentActivity() {
         if (mainViewModel.uiState.value.isRunning) {
             LauncherManager.stopService(this)
         } else {
-            requestServiceStart()
+            // Optional admin-enabled step: pick the fastest server first, then start exactly as before.
+            mainViewModel.selectFastestThen { requestServiceStart() }
         }
     }
 

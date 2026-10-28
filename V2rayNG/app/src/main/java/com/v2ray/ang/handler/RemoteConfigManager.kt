@@ -5,8 +5,10 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.v2ray.ang.AppConfig
 import com.v2ray.ang.dto.UrlContentRequest
+import com.v2ray.ang.dto.entities.SubscriptionItem
 import com.v2ray.ang.util.HttpUtil
 import com.v2ray.ang.util.LogUtil
+import com.v2ray.ang.util.Utils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,17 +22,45 @@ data class RemoteAnnouncement(val id: Int, val title: String, val text: String, 
 
 data class RemoteSponsor(val title: String, val desc: String, val url: String?)
 
-/** Sponsor and announcement content published by the admin bot's Worker (`/config.json`). */
+data class RemoteFeatures(val autoFastest: Boolean = false, val onboarding: Boolean = false)
+
+data class RemoteDefaultSub(val name: String, val url: String)
+
+data class RemoteUpdate(val versionCode: Int, val versionName: String, val apkUrl: String, val changelog: String)
+
+data class RemoteLinkItem(val label: String, val url: String)
+
+data class RemoteLinks(
+    val channel: String? = null,
+    val site: String? = null,
+    val privacy: String? = null,
+    val source: String? = null,
+    val releases: String? = null,
+)
+
+data class RemoteSlide(val title: String, val text: String)
+
+/** Content and switches published by the admin bot's Worker (`/config.json`). */
 data class RemoteConfig(
     val banner: RemoteBanner? = null,
     val announcement: RemoteAnnouncement? = null,
     val sponsorsTitle: String = "",
     val sponsorsIntro: String = "",
     val sponsors: List<RemoteSponsor> = emptyList(),
+    val features: RemoteFeatures = RemoteFeatures(),
+    val defaultSub: RemoteDefaultSub? = null,
+    val update: RemoteUpdate? = null,
+    val support: RemoteLinkItem? = null,
+    val links: RemoteLinks = RemoteLinks(),
+    val onboarding: List<RemoteSlide> = emptyList(),
 )
 
 /** Ids the user already closed or read, so the same banner or announcement is not shown again. */
-data class RemoteDismissed(val bannerId: Int = 0, val announcementId: Int = 0)
+data class RemoteDismissed(
+    val bannerId: Int = 0,
+    val announcementId: Int = 0,
+    val onboardingSeen: Boolean = false,
+)
 
 /**
  * Pure parser for the Worker's public config. Every field is optional and length-limited: the
@@ -72,12 +102,48 @@ object RemoteConfigParser {
             }
             ?.take(MAX_SPONSORS)
             .orEmpty()
+        val feat = root.obj("features")
+        val sub = root.obj("defaultSub")?.let { d ->
+            val url = d.str("url", 500)
+            if (d.bool("enabled") && SubscriptionInfoParser.sanitizeLink(url)?.startsWith("http", true) == true) {
+                RemoteDefaultSub(d.str("name", MAX_TITLE).ifEmpty { "SabetNet" }, url)
+            } else null
+        }
+        val upd = root.obj("update")?.let { u ->
+            val code = u.int("versionCode")
+            val apk = link(u.str("apkUrl", 500))
+            if (code > 0 && apk != null) RemoteUpdate(code, u.str("versionName", 40), apk, u.str("changelog", MAX_TEXT)) else null
+        }
+        val sup = root.obj("support")?.let { s ->
+            link(s.str("url", 500))?.let { RemoteLinkItem(s.str("label", MAX_TITLE), it) }
+        }
+        val lk = root.obj("links")
+        val slides = (root.get("onboarding") as? com.google.gson.JsonArray)
+            ?.mapNotNull { it as? JsonObject }
+            ?.mapNotNull { o ->
+                val title = o.str("title", MAX_TITLE)
+                if (title.isEmpty()) null else RemoteSlide(title, o.str("text", MAX_TEXT))
+            }
+            ?.take(8)
+            .orEmpty()
         return RemoteConfig(
             banner = banner,
             announcement = announcement,
             sponsorsTitle = page?.str("title", MAX_TITLE).orEmpty(),
             sponsorsIntro = page?.str("intro", MAX_TEXT).orEmpty(),
             sponsors = sponsors,
+            features = RemoteFeatures(feat?.bool("autoFastest") == true, feat?.bool("onboarding") == true),
+            defaultSub = sub,
+            update = upd,
+            support = sup,
+            links = RemoteLinks(
+                channel = lk?.str("channel", 500)?.let { link(it) },
+                site = lk?.str("site", 500)?.let { link(it) },
+                privacy = lk?.str("privacy", 500)?.let { link(it) },
+                source = lk?.str("source", 500)?.let { link(it) },
+                releases = lk?.str("releases", 500)?.let { link(it) },
+            ),
+            onboarding = slides,
         )
     }
 
@@ -111,6 +177,8 @@ object RemoteConfigManager {
     private const val PREF_CACHE = "pref_remote_config_cache"
     private const val PREF_BANNER_DISMISSED = "pref_remote_banner_dismissed"
     private const val PREF_ANNOUNCEMENT_SEEN = "pref_remote_announcement_seen"
+    private const val PREF_ONBOARDING_SEEN = "pref_remote_onboarding_seen"
+    private const val PREF_DEFAULT_SUB_URL = "pref_remote_default_sub_url"
     private const val FETCH_TIMEOUT_MS = 6000
 
     private val _config = MutableStateFlow(RemoteConfig())
@@ -132,6 +200,7 @@ object RemoteConfigManager {
                 RemoteDismissed(
                     MmkvManager.decodeSettingsInt(PREF_BANNER_DISMISSED, 0),
                     MmkvManager.decodeSettingsInt(PREF_ANNOUNCEMENT_SEEN, 0),
+                    MmkvManager.decodeSettingsBool(PREF_ONBOARDING_SEEN, false),
                 )
             }
         } catch (e: Exception) {
@@ -177,5 +246,31 @@ object RemoteConfigManager {
     fun markAnnouncementSeen(id: Int) {
         MmkvManager.encodeSettings(PREF_ANNOUNCEMENT_SEEN, id)
         _dismissed.update { it.copy(announcementId = id) }
+    }
+
+    fun markOnboardingSeen() {
+        MmkvManager.encodeSettings(PREF_ONBOARDING_SEEN, true)
+        _dismissed.update { it.copy(onboardingSeen = true) }
+    }
+
+    /**
+     * Adds the admin's default subscription once per distinct URL. Returns the new subscription so the
+     * caller can download it, or null when nothing was added (disabled, already present, or already
+     * offered once, so a subscription the user deleted does not come back).
+     */
+    suspend fun ensureDefaultSubscription(): Pair<String, SubscriptionItem>? = withContext(Dispatchers.IO) {
+        val sub = _config.value.defaultSub ?: return@withContext null
+        try {
+            if (MmkvManager.decodeSettingsString(PREF_DEFAULT_SUB_URL) == sub.url) return@withContext null
+            MmkvManager.encodeSettings(PREF_DEFAULT_SUB_URL, sub.url)
+            if (MmkvManager.decodeSubscriptions().any { it.subscription.url == sub.url }) return@withContext null
+            val id = Utils.getUuid()
+            val item = SubscriptionItem(remarks = sub.name, url = sub.url, autoUpdate = true)
+            MmkvManager.encodeSubscription(id, item)
+            id to item
+        } catch (e: Exception) {
+            LogUtil.e(AppConfig.TAG, "Remote config: default subscription failed", e)
+            null
+        }
     }
 }

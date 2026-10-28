@@ -43,6 +43,7 @@ enum class MainDestination(@DrawableRes val iconRes: Int, @StringRes val labelRe
     UserAssets(R.drawable.ic_file_24dp, R.string.title_user_asset_setting),
     Settings(R.drawable.ic_settings_24dp, R.string.title_settings),
     Promotion(R.drawable.ic_promotion_24dp, R.string.title_pref_promotion),
+    Support(R.drawable.ic_about_24dp, R.string.title_about),
     Logcat(R.drawable.ic_logcat_24dp, R.string.title_logcat),
     CheckUpdate(R.drawable.ic_check_update_24dp, R.string.update_check_for_update),
     BackupRestore(R.drawable.ic_restore_24dp, R.string.title_configuration_backup_restore),
@@ -59,6 +60,7 @@ private val primaryDrawerItems = listOf(
 
 private val drawerItems = primaryDrawerItems + listOf(
     MainDestination.Promotion,
+    MainDestination.Support,
     MainDestination.Logcat,
     MainDestination.CheckUpdate,
     MainDestination.BackupRestore,
@@ -66,7 +68,12 @@ private val drawerItems = primaryDrawerItems + listOf(
 )
 
 @Composable
-fun MainDrawerContent(drawerState: DrawerState, showSponsors: Boolean, onNavigate: (MainDestination) -> Unit) {
+fun MainDrawerContent(
+    drawerState: DrawerState,
+    showSponsors: Boolean,
+    supportLabel: String?,
+    onNavigate: (MainDestination) -> Unit
+) {
     val drawerScrollState = rememberScrollState()
 
     ModalDrawerSheet(
@@ -116,11 +123,16 @@ fun MainDrawerContent(drawerState: DrawerState, showSponsors: Boolean, onNavigat
                 }
             }
             // The sponsors entry only exists while the admin has published sponsors.
-            val visibleItems = drawerItems.filter { it != MainDestination.Promotion || showSponsors }
+            val visibleItems = drawerItems.filter {
+                (it != MainDestination.Promotion || showSponsors) && (it != MainDestination.Support || supportLabel != null)
+            }
             visibleItems.forEachIndexed { index, item ->
                 if (index == primaryDrawerItems.size) AppDivider()
                 NavigationDrawerItem(
-                    label = { Text(stringResource(item.labelRes)) },
+                    label = {
+                        // The support entry is named by the admin ("Support", "Contact us", ...).
+                        Text(if (item == MainDestination.Support && supportLabel != null) supportLabel else stringResource(item.labelRes))
+                    },
                     selected = false,
                     onClick = { onNavigate(item) },
                     icon = { Icon(painterResource(item.iconRes), contentDescription = null) },

@@ -36,7 +36,9 @@ data class MainUiState(
     val announcement: RemoteAnnouncement? = null,
     /** Sponsors page content; empty sponsors hides the drawer entry. */
     val sponsorsContent: RemoteConfig = RemoteConfig(),
-    val showSponsors: Boolean = false
+    val showSponsors: Boolean = false,
+    /** True while first-run slides should be shown (feature on, slides present, not yet finished). */
+    val showOnboarding: Boolean = false
 )
 
 /**
@@ -76,6 +78,7 @@ sealed interface MainAction {
     data object DismissQRCodeDialog : MainAction
     data class DismissBanner(val id: Int) : MainAction
     data class DismissAnnouncement(val id: Int) : MainAction
+    data object FinishOnboarding : MainAction
     data object ShowSponsors : MainAction
     data object HideSponsors : MainAction
     data class OpenSubscriptionLink(val url: String) : MainAction

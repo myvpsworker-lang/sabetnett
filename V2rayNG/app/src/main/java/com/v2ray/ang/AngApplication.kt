@@ -7,6 +7,7 @@ import androidx.work.Configuration
 import androidx.work.WorkManager
 import com.v2ray.ang.AppConfig.ANG_PACKAGE
 import com.v2ray.ang.handler.AppLocaleManager
+import com.v2ray.ang.enums.Language
 import com.v2ray.ang.handler.MmkvManager
 import com.v2ray.ang.handler.SettingsManager
 import com.v2ray.ang.ui.compose.ThemeManager
@@ -36,6 +37,14 @@ class AngApplication : Application() {
         super.onCreate()
 
         MmkvManager.initialize(this)
+
+        // Fresh installs start in Persian (RTL follows from the locale). An install that already ran
+        // has a stored language, so its choice is left alone.
+        if (MmkvManager.decodeSettingsString(AppConfig.PREF_LANGUAGE) == null &&
+            !MmkvManager.decodeSettingsBool(AppConfig.PREF_APP_LOCALE_MIGRATED, false)
+        ) {
+            MmkvManager.encodeSettings(AppConfig.PREF_LANGUAGE, Language.PERSIAN.code)
+        }
 
         AppLocaleManager.initialize(this)
 

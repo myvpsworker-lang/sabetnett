@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -19,6 +21,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import com.v2ray.ang.handler.RemoteSlide
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -143,5 +148,39 @@ fun SponsorsDialog(content: RemoteConfig, onOpenLink: (String) -> Unit, onDismis
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) } }
+    )
+}
+
+/** First-run slides. The single button advances page by page and finishes on the last one; swiping also works. */
+@Composable
+fun OnboardingDialog(slides: List<RemoteSlide>, onFinish: () -> Unit) {
+    if (slides.isEmpty()) return
+    val pagerState = rememberPagerState(pageCount = { slides.size })
+    val scope = rememberCoroutineScope()
+    val isLast = pagerState.currentPage >= slides.lastIndex
+    AlertDialog(
+        onDismissRequest = onFinish,
+        text = {
+            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth()) { page ->
+                val slide = slides[page]
+                Column(
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 140.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(slide.title, style = MaterialTheme.typography.titleLarge)
+                    Text(slide.text, style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        text = "${page + 1} / ${slides.size}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                if (isLast) onFinish() else scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
+            }) { Text(stringResource(R.string.action_ok)) }
+        }
     )
 }

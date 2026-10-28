@@ -77,4 +77,47 @@ class RemoteConfigParserTest {
         val c = RemoteConfigParser.parse("""{"banner":{"enabled":true,"id":1,"text":"${"a".repeat(1000)}"}}""")!!
         assertEquals(400, c.banner!!.text.length)
     }
+
+    @Test
+    fun parsesFeaturesLinksSupportAndSlides() {
+        val c = RemoteConfigParser.parse(
+            """{"features":{"autoFastest":true,"onboarding":false},
+               "support":{"label":"پشتیبانی","url":"https://t.me/s"},
+               "links":{"channel":"https://t.me/c","privacy":"javascript:x","source":""},
+               "onboarding":[{"title":"A","text":"a"},{"title":""},{"title":"B"}]}"""
+        )!!
+        assertTrue(c.features.autoFastest)
+        assertEquals(false, c.features.onboarding)
+        assertEquals(RemoteLinkItem("پشتیبانی", "https://t.me/s"), c.support)
+        assertEquals("https://t.me/c", c.links.channel)
+        assertNull(c.links.privacy)
+        assertNull(c.links.source)
+        assertEquals(listOf(RemoteSlide("A", "a"), RemoteSlide("B", "")), c.onboarding)
+    }
+
+    @Test
+    fun missingFeaturesDefaultToOff() {
+        val c = RemoteConfigParser.parse("{}")!!
+        assertEquals(false, c.features.autoFastest)
+        assertEquals(false, c.features.onboarding)
+        assertNull(c.support)
+        assertNull(c.defaultSub)
+        assertNull(c.update)
+    }
+
+    @Test
+    fun defaultSubNeedsEnabledAndHttpUrl() {
+        assertNull(RemoteConfigParser.parse("""{"defaultSub":{"enabled":false,"url":"https://a.b/s"}}""")!!.defaultSub)
+        assertNull(RemoteConfigParser.parse("""{"defaultSub":{"enabled":true,"url":"tg://x"}}""")!!.defaultSub)
+        val d = RemoteConfigParser.parse("""{"defaultSub":{"enabled":true,"name":"","url":"https://a.b/s"}}""")!!.defaultSub
+        assertEquals(RemoteDefaultSub("SabetNet", "https://a.b/s"), d)
+    }
+
+    @Test
+    fun updateNeedsCodeAndSafeApkUrl() {
+        assertNull(RemoteConfigParser.parse("""{"update":{"versionCode":0,"apkUrl":"https://a.b/x.apk"}}""")!!.update)
+        assertNull(RemoteConfigParser.parse("""{"update":{"versionCode":5,"apkUrl":"file:///x"}}""")!!.update)
+        val u = RemoteConfigParser.parse("""{"update":{"versionCode":5,"versionName":"1.2","apkUrl":"https://a.b/x.apk","changelog":"c"}}""")!!.update
+        assertEquals(RemoteUpdate(5, "1.2", "https://a.b/x.apk", "c"), u)
+    }
 }

@@ -29,7 +29,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.v2ray.ang.AppConfig
 import com.v2ray.ang.BuildConfig
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.v2ray.ang.R
+import com.v2ray.ang.handler.RemoteConfigManager
 import com.v2ray.ang.core.CoreNativeManager
 import com.v2ray.ang.ui.base.BaseComponentActivity
 import com.v2ray.ang.ui.compose.AppTopBar
@@ -61,6 +63,8 @@ fun AboutScreen(
     onTranslatorsClick: () -> Unit
 ) {
     val context = LocalContext.current
+    // Links are the admin's own (published via the bot); entries without a link are hidden.
+    val remote by RemoteConfigManager.config.collectAsStateWithLifecycle()
     var showOssDialog by remember { mutableStateOf(false) }
 
     val libVersion = CoreNativeManager.getLibVersion()
@@ -82,11 +86,13 @@ fun AboutScreen(
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
         ) {
-            SettingsMenuItem(
-                icon = painterResource(R.drawable.ic_source_code_24dp),
-                title = stringResource(R.string.title_source_code),
-                onClick = { Utils.openUri(context, AppConfig.APP_URL) }
-            )
+            remote.links.source?.let { url ->
+                SettingsMenuItem(
+                    icon = painterResource(R.drawable.ic_source_code_24dp),
+                    title = stringResource(R.string.title_source_code),
+                    onClick = { Utils.openUri(context, url) }
+                )
+            }
             SettingsMenuItem(
                 icon = painterResource(R.drawable.license_24px),
                 title = stringResource(R.string.title_oss_license),
@@ -97,21 +103,27 @@ fun AboutScreen(
                 title = stringResource(R.string.title_translators),
                 onClick = onTranslatorsClick
             )
-            SettingsMenuItem(
-                icon = painterResource(R.drawable.ic_feedback_24dp),
-                title = stringResource(R.string.title_pref_feedback),
-                onClick = { Utils.openUri(context, AppConfig.APP_ISSUES_URL) }
-            )
-            SettingsMenuItem(
-                icon = painterResource(R.drawable.ic_telegram_24dp),
-                title = stringResource(R.string.title_tg_channel),
-                onClick = { Utils.openUri(context, AppConfig.TG_CHANNEL_URL) }
-            )
-            SettingsMenuItem(
-                icon = painterResource(R.drawable.ic_privacy_24dp),
-                title = stringResource(R.string.title_privacy_policy),
-                onClick = { Utils.openUri(context, AppConfig.APP_PRIVACY_POLICY) }
-            )
+            remote.support?.url?.let { url ->
+                SettingsMenuItem(
+                    icon = painterResource(R.drawable.ic_feedback_24dp),
+                    title = stringResource(R.string.title_pref_feedback),
+                    onClick = { Utils.openUri(context, url) }
+                )
+            }
+            remote.links.channel?.let { url ->
+                SettingsMenuItem(
+                    icon = painterResource(R.drawable.ic_telegram_24dp),
+                    title = stringResource(R.string.title_tg_channel),
+                    onClick = { Utils.openUri(context, url) }
+                )
+            }
+            remote.links.privacy?.let { url ->
+                SettingsMenuItem(
+                    icon = painterResource(R.drawable.ic_privacy_24dp),
+                    title = stringResource(R.string.title_privacy_policy),
+                    onClick = { Utils.openUri(context, url) }
+                )
+            }
             VersionInfoBlock(
                 versionText = versionText,
                 appIdText = appIdText

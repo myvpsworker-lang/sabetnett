@@ -18,7 +18,10 @@ import com.v2ray.ang.extension.delay
 import com.v2ray.ang.extension.isComplexType
 import com.v2ray.ang.extension.matchesPattern
 import com.v2ray.ang.extension.moveItem
+import com.v2ray.ang.handler.FastestServerPicker
+import com.v2ray.ang.handler.RemoteConfig
 import com.v2ray.ang.handler.RemoteConfigManager
+import com.v2ray.ang.handler.RemoteDismissed
 import com.v2ray.ang.handler.SubscriptionInfoParser
 import com.v2ray.ang.ui.base.BaseViewModel
 import com.v2ray.ang.util.LogUtil
@@ -89,6 +92,9 @@ class MainViewModel(
     )
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
+    private fun showOnboardingFor(config: RemoteConfig, dismissed: RemoteDismissed) =
+        config.features.onboarding && config.onboarding.isNotEmpty() && !dismissed.onboardingSeen
+
     // ---------- Keyword filtering ----------
     @Volatile
     private var keywordFilter: String = ""
@@ -107,6 +113,7 @@ class MainViewModel(
     private var selectedGroupLoadJob: Job? = null
     private var reloadJob: Job? = null
     private var testResultFlushJob: Job? = null
+    private var fastestJob: Job? = null
     private val pendingTestResults = linkedMapOf<String, Long>()
 
     private val testRequests = MainTestRequests()
@@ -126,13 +133,15 @@ class MainViewModel(
         viewModelScope.launch {
             RemoteConfigManager.load()
             combine(RemoteConfigManager.config, RemoteConfigManager.dismissed) { config, dismissed ->
-                Triple(config, config.banner?.takeIf { it.id != dismissed.bannerId },
-                    config.announcement?.takeIf { it.id != dismissed.announcementId })
-            }.collect { (config, banner, announcement) ->
+                config to dismissed
+            }.collect { (config, dismissed) ->
                 _uiState.update {
                     it.copy(
-                        banner = banner,
-                        announcement = announcement,
+                        banner = config.banner?.takeIf { b -> b.id != dismissed.bannerId },
+                        // Onboarding comes first; the announcement waits until it is finished.
+                        announcement = config.announcement
+                            ?.takeIf { a -> a.id != dismissed.announcementId && !showOnboardingFor(config, dismissed) },
+                        showOnboarding = showOnboardingFor(config, dismissed),
                         sponsorsContent = config,
                         showSponsors = it.showSponsors && config.sponsors.isNotEmpty()
                     )
@@ -327,6 +336,7 @@ class MainViewModel(
 
             is MainAction.DismissBanner -> RemoteConfigManager.dismissBanner(action.id)
             is MainAction.DismissAnnouncement -> RemoteConfigManager.markAnnouncementSeen(action.id)
+            MainAction.FinishOnboarding -> RemoteConfigManager.markOnboardingSeen()
             MainAction.ShowSponsors -> _uiState.update { it.copy(showSponsors = true) }
             MainAction.HideSponsors -> _uiState.update { it.copy(showSponsors = false) }
 
@@ -350,7 +360,9 @@ class MainViewModel(
     // ---------- Initialization ----------
     fun initialize() {
         // Independent of the local initialization below: a slow or failed download must never delay it.
-        viewModelScope.launch { RemoteConfigManager.refresh() }
+        viewModelScope.launch {
+            if (RemoteConfigManager.refresh()) addDefaultSubscription()
+        }
         viewModelScope.launch(preloadDispatcher) {
             try {
                 initialPageReady.await()
@@ -362,6 +374,55 @@ class MainViewModel(
             } catch (error: Exception) {
                 LogUtil.e(AppConfig.TAG, "Main background initialization failed", error)
             }
+        }
+    }
+
+    /** Adds and downloads the admin's default subscription (once), then refreshes the group tabs. */
+    private suspend fun addDefaultSubscription() {
+        val (id, item) = RemoteConfigManager.ensureDefaultSubscription() ?: return
+        withContext(ioDispatcher) {
+            try {
+                dataSource.updateConfigViaSub(SubscriptionCache(id, item))
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (e: Exception) {
+                LogUtil.e(AppConfig.TAG, "Default subscription download failed, subId=$id", e)
+            }
+        }
+        setupGroupTab(forceRefresh = true)
+    }
+
+    /**
+     * When the admin enabled it, probes the servers of the selected group over TCP and selects the one
+     * that answers fastest before [onReady] starts the connection. Never blocks longer than the probe
+     * budget and always calls [onReady] exactly once; failures keep the current selection.
+     */
+    fun selectFastestThen(onReady: () -> Unit) {
+        val enabled = RemoteConfigManager.config.value.features.autoFastest
+        val candidates = currentServers()
+        if (!enabled || candidates.size < 2) {
+            onReady()
+            return
+        }
+        if (fastestJob?.isActive == true) return // a second tap while probing must not start twice
+        fastestJob = viewModelScope.launch {
+            try {
+                val best = withContext(ioDispatcher) {
+                    FastestServerPicker.pick(
+                        candidates.mapNotNull { c ->
+                            val host = c.profile.server
+                            val port = c.profile.serverPort?.toIntOrNull()
+                            if (host.isNullOrBlank() || port == null) null else FastestServerPicker.Candidate(c.guid, host, port)
+                        }
+                    )
+                }
+                if (best != null && best != uiState.value.selectedGuid) updateSelectedGuid(best)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (e: Exception) {
+                LogUtil.e(AppConfig.TAG, "Auto-fastest selection failed", e)
+            }
+            onReady()
         }
     }
 

@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.v2ray.ang.R
 import com.v2ray.ang.dto.entities.ProfileItem
 import com.v2ray.ang.ui.compose.LocalDarkTheme
 import com.v2ray.ang.ui.compose.QRCodeDialog
@@ -137,6 +138,12 @@ fun MainScreen(
         QRCodeDialog(bitmap = shareQRCodeBitmap, onDismiss = { onAction(MainAction.DismissQRCodeDialog) })
     }
 
+    if (uiState.showOnboarding) {
+        OnboardingDialog(
+            slides = uiState.sponsorsContent.onboarding,
+            onFinish = { onAction(MainAction.FinishOnboarding) }
+        )
+    }
     uiState.announcement?.let { announcement ->
         RemoteAnnouncementDialog(
             announcement = announcement,
@@ -158,6 +165,7 @@ fun MainScreen(
             MainDrawerContent(
                 drawerState = drawerState,
                 showSponsors = uiState.sponsorsContent.sponsors.isNotEmpty(),
+                supportLabel = uiState.sponsorsContent.support?.let { it.label.ifEmpty { stringResource(R.string.title_about) } },
                 onNavigate = { route ->
                     scope.launch { drawerState.close() }
                     onNavigate(route)
