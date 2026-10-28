@@ -66,7 +66,7 @@ private val drawerItems = primaryDrawerItems + listOf(
 )
 
 @Composable
-fun MainDrawerContent(drawerState: DrawerState, onNavigate: (MainDestination) -> Unit) {
+fun MainDrawerContent(drawerState: DrawerState, showSponsors: Boolean, onNavigate: (MainDestination) -> Unit) {
     val drawerScrollState = rememberScrollState()
 
     ModalDrawerSheet(
@@ -115,7 +115,9 @@ fun MainDrawerContent(drawerState: DrawerState, onNavigate: (MainDestination) ->
                     )
                 }
             }
-            drawerItems.forEachIndexed { index, item ->
+            // The sponsors entry only exists while the admin has published sponsors.
+            val visibleItems = drawerItems.filter { it != MainDestination.Promotion || showSponsors }
+            visibleItems.forEachIndexed { index, item ->
                 if (index == primaryDrawerItems.size) AppDivider()
                 NavigationDrawerItem(
                     label = { Text(stringResource(item.labelRes)) },

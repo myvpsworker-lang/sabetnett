@@ -565,4 +565,5 @@
     <string name="sub_info_traffic" translatable="false">%1$s / %2$s</string>
     <string name="sub_info_unlimited">Unlimited</string>
 
+    <string name="remote_open_link">Open</string>
 </resources>

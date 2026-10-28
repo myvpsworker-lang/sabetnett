@@ -18,6 +18,7 @@ import com.v2ray.ang.extension.delay
 import com.v2ray.ang.extension.isComplexType
 import com.v2ray.ang.extension.matchesPattern
 import com.v2ray.ang.extension.moveItem
+import com.v2ray.ang.handler.RemoteConfigManager
 import com.v2ray.ang.handler.SubscriptionInfoParser
 import com.v2ray.ang.ui.base.BaseViewModel
 import com.v2ray.ang.util.LogUtil
@@ -33,6 +34,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -116,6 +118,27 @@ class MainViewModel(
     init {
         collectServiceEvents()
         setupGroupTab()
+        collectRemoteConfig()
+    }
+
+    /** Mirrors the remote sponsor content into UI state, hiding what the user already dismissed. */
+    private fun collectRemoteConfig() {
+        viewModelScope.launch {
+            RemoteConfigManager.load()
+            combine(RemoteConfigManager.config, RemoteConfigManager.dismissed) { config, dismissed ->
+                Triple(config, config.banner?.takeIf { it.id != dismissed.bannerId },
+                    config.announcement?.takeIf { it.id != dismissed.announcementId })
+            }.collect { (config, banner, announcement) ->
+                _uiState.update {
+                    it.copy(
+                        banner = banner,
+                        announcement = announcement,
+                        sponsorsContent = config,
+                        showSponsors = it.showSponsors && config.sponsors.isNotEmpty()
+                    )
+                }
+            }
+        }
     }
 
     private fun collectServiceEvents() {
@@ -302,6 +325,11 @@ class MainViewModel(
                 _uiState.update { it.copy(shareQRCodeBitmap = null) }
             }
 
+            is MainAction.DismissBanner -> RemoteConfigManager.dismissBanner(action.id)
+            is MainAction.DismissAnnouncement -> RemoteConfigManager.markAnnouncementSeen(action.id)
+            MainAction.ShowSponsors -> _uiState.update { it.copy(showSponsors = true) }
+            MainAction.HideSponsors -> _uiState.update { it.copy(showSponsors = false) }
+
             MainAction.ToggleService,
             MainAction.TestCurrentServer,
             MainAction.ImportQRcode,
@@ -321,6 +349,8 @@ class MainViewModel(
 
     // ---------- Initialization ----------
     fun initialize() {
+        // Independent of the local initialization below: a slow or failed download must never delay it.
+        viewModelScope.launch { RemoteConfigManager.refresh() }
         viewModelScope.launch(preloadDispatcher) {
             try {
                 initialPageReady.await()
@@ -930,6 +960,8 @@ class MainViewModel(
 
     // ---------- Running state ----------
     private fun updateRunningState(running: Boolean, clearTestingText: Boolean = true) {
+        // The direct download may have been blocked; retry through the tunnel once it is up.
+        if (running && !_uiState.value.isRunning) viewModelScope.launch { RemoteConfigManager.refresh() }
         if (!running || clearTestingText) testRequests.invalidateCurrent()
         _uiState.update { state ->
             state.copy(

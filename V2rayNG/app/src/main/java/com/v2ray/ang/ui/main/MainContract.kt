@@ -3,6 +3,9 @@ package com.v2ray.ang.ui.main
 import com.v2ray.ang.dto.ConnectionTestResult
 import com.v2ray.ang.dto.GroupMapItem
 import com.v2ray.ang.dto.LocateTarget
+import com.v2ray.ang.handler.RemoteAnnouncement
+import com.v2ray.ang.handler.RemoteBanner
+import com.v2ray.ang.handler.RemoteConfig
 
 /** Locale-neutral state formatted only when it reaches the main UI. */
 sealed interface MainStatus {
@@ -26,7 +29,14 @@ data class MainUiState(
     val locateTarget: LocateTarget? = null,
     val confirmRemove: Boolean = false,
     val doubleColumnDisplay: Boolean = false,
-    val shareQRCodeBitmap: android.graphics.Bitmap? = null
+    val shareQRCodeBitmap: android.graphics.Bitmap? = null,
+    /** Remote banner the user has not closed yet. */
+    val banner: RemoteBanner? = null,
+    /** Remote announcement the user has not read yet. */
+    val announcement: RemoteAnnouncement? = null,
+    /** Sponsors page content; empty sponsors hides the drawer entry. */
+    val sponsorsContent: RemoteConfig = RemoteConfig(),
+    val showSponsors: Boolean = false
 )
 
 /**
@@ -64,6 +74,10 @@ sealed interface MainAction {
     data class ShareClipboard(val guid: String) : MainAction
     data class ShareFullContent(val guid: String) : MainAction
     data object DismissQRCodeDialog : MainAction
+    data class DismissBanner(val id: Int) : MainAction
+    data class DismissAnnouncement(val id: Int) : MainAction
+    data object ShowSponsors : MainAction
+    data object HideSponsors : MainAction
     data class OpenSubscriptionLink(val url: String) : MainAction
 
     data class ImportBatchConfig(val configText: String) : MainAction

@@ -156,10 +156,8 @@ class MainActivity : HelperBaseComponentActivity() {
             MainDestination.BackupRestore -> Intent(this, BackupActivity::class.java)
             MainDestination.About -> Intent(this, AboutActivity::class.java)
             MainDestination.Promotion -> {
-                Utils.openUri(
-                    this,
-                    "${Utils.decode(AppConfig.APP_PROMOTION_URL)}?t=${System.currentTimeMillis()}"
-                )
+                // Upstream's ad page is replaced by the sponsors the admin publishes.
+                mainViewModel.onAction(MainAction.ShowSponsors)
                 return
             }
         }

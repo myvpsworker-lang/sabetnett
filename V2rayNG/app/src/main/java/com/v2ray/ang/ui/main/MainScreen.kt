@@ -137,11 +137,27 @@ fun MainScreen(
         QRCodeDialog(bitmap = shareQRCodeBitmap, onDismiss = { onAction(MainAction.DismissQRCodeDialog) })
     }
 
+    uiState.announcement?.let { announcement ->
+        RemoteAnnouncementDialog(
+            announcement = announcement,
+            onOpenLink = { url -> onAction(MainAction.OpenSubscriptionLink(url)) },
+            onDismiss = { id -> onAction(MainAction.DismissAnnouncement(id)) }
+        )
+    }
+    if (uiState.showSponsors) {
+        SponsorsDialog(
+            content = uiState.sponsorsContent,
+            onOpenLink = { url -> onAction(MainAction.OpenSubscriptionLink(url)) },
+            onDismiss = { onAction(MainAction.HideSponsors) }
+        )
+    }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             MainDrawerContent(
                 drawerState = drawerState,
+                showSponsors = uiState.sponsorsContent.sponsors.isNotEmpty(),
                 onNavigate = { route ->
                     scope.launch { drawerState.close() }
                     onNavigate(route)
@@ -202,6 +218,13 @@ fun MainScreen(
                         .fillMaxSize()
                         .padding(innerPadding)
                 ) {
+                    uiState.banner?.let { banner ->
+                        RemoteBannerCard(
+                            banner = banner,
+                            onOpenLink = { url -> onAction(MainAction.OpenSubscriptionLink(url)) },
+                            onDismiss = { id -> onAction(MainAction.DismissBanner(id)) }
+                        )
+                    }
                     if (groups.size > 1) {
                         GroupTabBar(
                             groups = groups,
