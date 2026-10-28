@@ -47,6 +47,10 @@ object NotificationManager {
     private var restartPendingIntent: PendingIntent? = null
     private var lastSpeed: SpeedSnapshot? = null
 
+    // Identity of the last posted update; an identical refresh is skipped so the system UI is not
+    // asked to re-inflate the custom layouts for nothing.
+    private var lastPostedKey: String? = null
+
     /** Per-second traffic (bytes) for the proxy and direct outbounds. */
     private data class SpeedSnapshot(
         val proxyUp: Long,
@@ -102,6 +106,7 @@ object NotificationManager {
         restartPendingIntent = restartV2RayPendingIntent
         currentTitle = currentConfig?.remarks ?: service.getString(R.string.app_name)
         lastSpeed = null
+        lastPostedKey = null
 
         val channelId =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -149,6 +154,7 @@ object NotificationManager {
         service.stopForeground(Service.STOP_FOREGROUND_REMOVE)
 
         mBuilder = null
+        lastPostedKey = null
         speedNotificationJob?.cancel()
         speedNotificationJob = null
         mNotificationManager = null
@@ -195,13 +201,17 @@ object NotificationManager {
     private fun updateNotification(speed: SpeedSnapshot?, proxyTraffic: Long, directTraffic: Long) {
         val builder = mBuilder ?: return
         val service = getService() ?: return
-        if (proxyTraffic < NOTIFICATION_ICON_THRESHOLD && directTraffic < NOTIFICATION_ICON_THRESHOLD) {
-            builder.setSmallIcon(R.drawable.ic_stat_name)
+        val iconRes = if (proxyTraffic < NOTIFICATION_ICON_THRESHOLD && directTraffic < NOTIFICATION_ICON_THRESHOLD) {
+            R.drawable.ic_stat_name
         } else if (proxyTraffic > directTraffic) {
-            builder.setSmallIcon(R.drawable.ic_stat_proxy)
+            R.drawable.ic_stat_proxy
         } else {
-            builder.setSmallIcon(R.drawable.ic_stat_direct)
+            R.drawable.ic_stat_direct
         }
+        val key = "$iconRes|$speed"
+        if (key == lastPostedKey) return
+        lastPostedKey = key
+        builder.setSmallIcon(iconRes)
         lastSpeed = speed
         builder.setCustomContentView(buildContentViews(service, expanded = false))
         builder.setCustomBigContentView(buildContentViews(service, expanded = true))
