@@ -129,6 +129,7 @@ jobs:
 
     - name: Build APK
       run: |
+        set -o pipefail
         cd ${{ github.workspace }}/V2rayNG
         echo "sdk.dir=${ANDROID_HOME}" > local.properties
         chmod 755 gradlew
@@ -137,7 +138,13 @@ jobs:
           -Pandroid.injected.signing.store.file="$KS_FILE" \
           -Pandroid.injected.signing.store.password="$KS_PASS" \
           -Pandroid.injected.signing.key.alias="$KS_ALIAS" \
-          -Pandroid.injected.signing.key.password="$KEY_PASS"
+          -Pandroid.injected.signing.key.password="$KEY_PASS" 2>&1 | tee "${{ github.workspace }}/build.log"
+
+    - name: Show compile errors
+      if: ${{ failure() }}
+      run: |
+        # Surfaces Kotlin/Gradle errors as annotations so they are visible without opening the full log.
+        grep -E "^e: |error:|What went wrong|Execution failed" -A2 build.log | head -40 | sed 's/%/%25/g' | while IFS= read -r line; do echo "::error::${line}"; done | head -10
 
     - name: Upload APKs
       uses: actions/upload-artifact@v7
