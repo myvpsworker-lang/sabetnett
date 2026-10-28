@@ -146,6 +146,24 @@ jobs:
         # Surfaces Kotlin/Gradle errors as annotations so they are visible without opening the full log.
         grep -E "^e: |error:|What went wrong|Execution failed" -A2 build.log | head -40 | sed 's/%/%25/g' | while IFS= read -r line; do echo "::error::${line}"; done | head -10
 
+    - name: Unit tests
+      continue-on-error: true
+      run: |
+        set -o pipefail
+        cd ${{ github.workspace }}/V2rayNG
+        ./gradlew :app:testPlaystoreDebugUnitTest 2>&1 | tee "${{ github.workspace }}/test.log" | tail -5
+        status=$?
+        exit $status
+
+    - name: Show test failures
+      if: ${{ always() }}
+      run: |
+        if grep -qE "FAILED|BUILD FAILED" test.log 2>/dev/null; then
+          grep -E "FAILED|^e: |AssertionFailed|expected:" test.log | head -10 | sed 's/%/%25/g' | while IFS= read -r line; do echo "::error::${line}"; done
+        else
+          echo "::notice::Unit tests passed"
+        fi
+
     - name: Upload APKs
       uses: actions/upload-artifact@v7
       if: ${{ success() }}
