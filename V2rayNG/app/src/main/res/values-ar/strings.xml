@@ -573,4 +573,12 @@
     <string name="sub_info_unlimited">غير محدود</string>
 
     <string name="remote_open_link">فتح</string>
+    <string name="onboarding_skip">تخطي</string>
+    <string name="onboarding_next">التالي</string>
+    <string name="onboarding_start">ابدأ</string>
+    <string name="warn_expired">انتهى اشتراكك</string>
+    <string name="warn_expiry_today">ينتهي اشتراكك اليوم</string>
+    <string name="warn_expiry_days">ينتهي اشتراكك خلال %1$d أيام</string>
+    <string name="warn_low_data">تبقى %1$d%% فقط من بياناتك</string>
+    <string name="acc_toggle_theme">تبديل الوضع الداكن/الفاتح</string>
 </resources>

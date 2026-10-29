@@ -19,7 +19,7 @@ class RemoteConfigParserTest {
     @Test
     fun emptyObjectGivesEmptyConfig() {
         val c = RemoteConfigParser.parse("{}")!!
-        assertNull(c.banner)
+        assertTrue(c.banners.isEmpty())
         assertNull(c.announcement)
         assertTrue(c.sponsors.isEmpty())
     }
@@ -30,7 +30,7 @@ class RemoteConfigParserTest {
             """{"banner":{"enabled":true,"id":3,"text":" سلام ","url":"https://t.me/x","label":"برو"},
                "announcement":{"enabled":true,"id":2,"title":"T","text":"body","url":"tg://resolve?domain=a"}}"""
         )!!
-        assertEquals(RemoteBanner(3, "سلام", "https://t.me/x", "برو"), c.banner)
+        assertEquals(listOf(RemoteBanner(3, "سلام", "https://t.me/x", "برو")), c.banners)
         assertEquals(RemoteAnnouncement(2, "T", "body", "tg://resolve?domain=a"), c.announcement)
     }
 
@@ -39,7 +39,7 @@ class RemoteConfigParserTest {
         val c = RemoteConfigParser.parse(
             """{"banner":{"enabled":false,"id":1,"text":"x"},"announcement":{"enabled":true,"id":1,"text":"  "}}"""
         )!!
-        assertNull(c.banner)
+        assertTrue(c.banners.isEmpty())
         assertNull(c.announcement)
     }
 
@@ -48,8 +48,8 @@ class RemoteConfigParserTest {
         val c = RemoteConfigParser.parse(
             """{"banner":{"enabled":true,"id":1,"text":"hi","url":"javascript:alert(1)"}}"""
         )!!
-        assertNotNull(c.banner)
-        assertNull(c.banner!!.url)
+        assertNotNull(c.banners.firstOrNull())
+        assertNull(c.banners.first().url)
     }
 
     @Test
@@ -57,7 +57,7 @@ class RemoteConfigParserTest {
         val c = RemoteConfigParser.parse(
             """{"banner":"oops","announcement":5,"sponsors":{"a":1},"sponsorsPage":[1]}"""
         )!!
-        assertNull(c.banner)
+        assertTrue(c.banners.isEmpty())
         assertNull(c.announcement)
         assertTrue(c.sponsors.isEmpty())
     }
@@ -75,7 +75,7 @@ class RemoteConfigParserTest {
     @Test
     fun longTextIsTruncated() {
         val c = RemoteConfigParser.parse("""{"banner":{"enabled":true,"id":1,"text":"${"a".repeat(1000)}"}}""")!!
-        assertEquals(400, c.banner!!.text.length)
+        assertEquals(400, c.banners.first().text.length)
     }
 
     @Test
@@ -92,7 +92,7 @@ class RemoteConfigParserTest {
         assertEquals("https://t.me/c", c.links.channel)
         assertNull(c.links.privacy)
         assertNull(c.links.source)
-        assertEquals(listOf(RemoteSlide("A", "a"), RemoteSlide("B", "")), c.onboarding)
+        assertEquals(listOf(RemoteSlide("✨", "A", "a"), RemoteSlide("✨", "B", "")), c.onboarding)
     }
 
     @Test
@@ -119,5 +119,53 @@ class RemoteConfigParserTest {
         assertNull(RemoteConfigParser.parse("""{"update":{"versionCode":5,"apkUrl":"file:///x"}}""")!!.update)
         val u = RemoteConfigParser.parse("""{"update":{"versionCode":5,"versionName":"1.2","apkUrl":"https://a.b/x.apk","changelog":"c"}}""")!!.update
         assertEquals(RemoteUpdate(5, "1.2", "https://a.b/x.apk", "c"), u)
+    }
+
+    @Test
+    fun parsesRotatingBannersWithColorScheduleAndDismissFlag() {
+        val c = RemoteConfigParser.parse(
+            """{"banners":[
+                 {"id":1,"text":"a","color":"#112233","dismissible":false,"start":100,"end":200},
+                 {"id":2,"text":"b","color":"red"},
+                 {"id":3,"text":""}]}"""
+        )!!
+        assertEquals(2, c.banners.size)
+        val first = c.banners[0]
+        assertEquals(0xFF112233.toInt(), first.colorArgb)
+        assertEquals(false, first.dismissible)
+        assertTrue(first.isActiveAt(150))
+        assertEquals(false, first.isActiveAt(99))
+        assertEquals(false, first.isActiveAt(200))
+        assertNull(c.banners[1].colorArgb)
+        assertTrue(c.banners[1].dismissible)
+        assertTrue(c.banners[1].isActiveAt(Long.MAX_VALUE - 1))
+    }
+
+    @Test
+    fun bannersAreCapped() {
+        val items = (1..9).joinToString(",") { """{"id":$it,"text":"t$it"}""" }
+        assertEquals(5, RemoteConfigParser.parse("""{"banners":[$items]}""")!!.banners.size)
+    }
+
+    @Test
+    fun parseColorAcceptsOnlySixDigitHex() {
+        assertEquals(0xFFFFFFFF.toInt(), RemoteConfigParser.parseColor("#ffffff"))
+        assertNull(RemoteConfigParser.parseColor("#fff"))
+        assertNull(RemoteConfigParser.parseColor("ffffff"))
+        assertNull(RemoteConfigParser.parseColor("#gggggg"))
+    }
+
+    @Test
+    fun parsesEmergencyWhatsNewWarningsAndSubscriptionLink() {
+        val c = RemoteConfigParser.parse(
+            """{"emergency":{"enabled":true,"id":4,"title":"E","text":"down"},
+               "whatsNew":{"versionCode":12,"title":"New","text":"stuff"},
+               "warnings":{"enabled":true,"expiryDays":99,"lowPercent":5},
+               "links":{"subscriptionTelegram":"https://t.me/me"}}"""
+        )!!
+        assertEquals(RemoteEmergency(4, "E", "down", null), c.emergency)
+        assertEquals(RemoteWhatsNew(12, "New", "stuff"), c.whatsNew)
+        assertEquals(RemoteWarnings(true, 60, 5), c.warnings)
+        assertEquals("https://t.me/me", c.links.subscriptionTelegram)
     }
 }

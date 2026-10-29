@@ -64,6 +64,7 @@ private val CONNECT_BUTTON_SIZE = 68.dp
 @Composable
 fun MainBottomBar(
     displayText: String,
+    speedText: String?,
     isRunning: Boolean,
     isDarkTheme: Boolean,
     onAction: (MainAction) -> Unit
@@ -132,6 +133,15 @@ fun MainBottomBar(
                             contentDescription = displayText
                         }
                     )
+                    if (speedText != null) {
+                        Text(
+                            text = speedText,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = colors.primary,
+                            maxLines = 1,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
                 }
             }
 

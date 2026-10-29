@@ -566,4 +566,13 @@
     <string name="sub_info_unlimited">Unlimited</string>
 
     <string name="remote_open_link">Open</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_start">Get started</string>
+    <string name="warn_expired">Your subscription has expired</string>
+    <string name="warn_expiry_today">Your subscription expires today</string>
+    <string name="warn_expiry_days">Your subscription expires in %1$d days</string>
+    <string name="warn_low_data">Only %1$d%% of your data is left</string>
+    <string name="acc_toggle_theme">Toggle dark/light theme</string>
+    <string name="speed_format" translatable="false">↓ %1$s/s   ↑ %2$s/s</string>
 </resources>

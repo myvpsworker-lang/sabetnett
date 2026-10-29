@@ -4,7 +4,10 @@ import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import android.net.TrafficStats
+import android.os.SystemClock
 import com.v2ray.ang.AppConfig
+import com.v2ray.ang.BuildConfig
 import com.v2ray.ang.R
 import com.v2ray.ang.dto.ConnectionTestResult
 import com.v2ray.ang.dto.GroupMapItem
@@ -19,9 +22,12 @@ import com.v2ray.ang.extension.isComplexType
 import com.v2ray.ang.extension.matchesPattern
 import com.v2ray.ang.extension.moveItem
 import com.v2ray.ang.handler.FastestServerPicker
-import com.v2ray.ang.handler.RemoteConfig
+import com.v2ray.ang.ui.compose.ThemeManager
 import com.v2ray.ang.handler.RemoteConfigManager
-import com.v2ray.ang.handler.RemoteDismissed
+import com.v2ray.ang.handler.RemoteDialogPicker
+import com.v2ray.ang.handler.TrafficSample
+import com.v2ray.ang.handler.TrafficSpeed
+import com.v2ray.ang.handler.TrafficSpeedCalculator
 import com.v2ray.ang.handler.SubscriptionInfoParser
 import com.v2ray.ang.ui.base.BaseViewModel
 import com.v2ray.ang.util.LogUtil
@@ -38,6 +44,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -92,8 +100,37 @@ class MainViewModel(
     )
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
-    private fun showOnboardingFor(config: RemoteConfig, dismissed: RemoteDismissed) =
-        config.features.onboarding && config.onboarding.isNotEmpty() && !dismissed.onboardingSeen
+    /** Emergency message id the user closed in this app session (it returns on the next launch). */
+    private val emergencyClosed = MutableStateFlow(0)
+
+    // ---------- Live speed ----------
+    /**
+     * Network speed of this app's UID, sampled once a second only while the UI collects it. The proxy
+     * core runs in this UID, so its upstream traffic equals what the tunnel moves; no service IPC needed.
+     */
+    val speed: StateFlow<TrafficSpeed?> = flow {
+        val uid = android.os.Process.myUid()
+        fun sample() = TrafficSample(TrafficStats.getUidRxBytes(uid), TrafficStats.getUidTxBytes(uid))
+        var start: TrafficSample? = null
+        var previous: TrafficSample? = null
+        var previousAt = 0L
+        while (true) {
+            if (!uiState.value.isRunning) {
+                start = null
+                previous = null
+                emit(null)
+            } else {
+                val now = SystemClock.elapsedRealtime()
+                val current = sample()
+                val base = start ?: current.also { start = it }
+                val last = previous
+                emit(if (last == null) null else TrafficSpeedCalculator.speed(base, last, current, now - previousAt))
+                previous = current
+                previousAt = now
+            }
+            delay(SPEED_SAMPLE_INTERVAL_MS)
+        }
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     // ---------- Keyword filtering ----------
     @Volatile
@@ -128,20 +165,18 @@ class MainViewModel(
         collectRemoteConfig()
     }
 
-    /** Mirrors the remote sponsor content into UI state, hiding what the user already dismissed. */
+    /** Mirrors the remote content into UI state, hiding what the user already dismissed or what is out of schedule. */
     private fun collectRemoteConfig() {
         viewModelScope.launch {
             RemoteConfigManager.load()
-            combine(RemoteConfigManager.config, RemoteConfigManager.dismissed) { config, dismissed ->
-                config to dismissed
-            }.collect { (config, dismissed) ->
+            combine(RemoteConfigManager.config, RemoteConfigManager.dismissed, emergencyClosed) { config, dismissed, closed ->
+                Triple(config, dismissed, closed)
+            }.collect { (config, dismissed, closed) ->
+                val now = System.currentTimeMillis()
                 _uiState.update {
                     it.copy(
-                        banner = config.banner?.takeIf { b -> b.id != dismissed.bannerId },
-                        // Onboarding comes first; the announcement waits until it is finished.
-                        announcement = config.announcement
-                            ?.takeIf { a -> a.id != dismissed.announcementId && !showOnboardingFor(config, dismissed) },
-                        showOnboarding = showOnboardingFor(config, dismissed),
+                        banners = config.banners.filter { b -> b.id !in dismissed.bannerIds && b.isActiveAt(now) },
+                        remoteDialog = RemoteDialogPicker.pick(config, dismissed, closed, BuildConfig.VERSION_CODE),
                         sponsorsContent = config,
                         showSponsors = it.showSponsors && config.sponsors.isNotEmpty()
                     )
@@ -336,7 +371,11 @@ class MainViewModel(
 
             is MainAction.DismissBanner -> RemoteConfigManager.dismissBanner(action.id)
             is MainAction.DismissAnnouncement -> RemoteConfigManager.markAnnouncementSeen(action.id)
+            is MainAction.DismissEmergency -> emergencyClosed.value = action.id
+            is MainAction.DismissWhatsNew -> RemoteConfigManager.markWhatsNewSeen(action.versionCode)
             MainAction.FinishOnboarding -> RemoteConfigManager.markOnboardingSeen()
+            is MainAction.OpenPromoLink -> viewModelScope.launch { RemoteConfigManager.reportClick(action.kind, action.id) }
+            is MainAction.SetTheme -> ThemeManager.setThemeMode(if (action.dark) "2" else "1")
             MainAction.ShowSponsors -> _uiState.update { it.copy(showSponsors = true) }
             MainAction.HideSponsors -> _uiState.update { it.copy(showSponsors = false) }
 
@@ -361,7 +400,10 @@ class MainViewModel(
     fun initialize() {
         // Independent of the local initialization below: a slow or failed download must never delay it.
         viewModelScope.launch {
-            if (RemoteConfigManager.refresh()) addDefaultSubscription()
+            if (RemoteConfigManager.refresh()) {
+                RemoteConfigManager.pingIfDue()
+                addDefaultSubscription()
+            }
         }
         viewModelScope.launch(preloadDispatcher) {
             try {
@@ -1058,5 +1100,6 @@ class MainViewModel(
 
     private companion object {
         const val TEST_RESULT_FLUSH_INTERVAL_MS = 500L
+        const val SPEED_SAMPLE_INTERVAL_MS = 1000L
     }
 }

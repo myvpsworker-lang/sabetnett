@@ -563,4 +563,12 @@
     <string name="sub_info_unlimited">无限制</string>
 
     <string name="remote_open_link">打开</string>
+    <string name="onboarding_skip">跳过</string>
+    <string name="onboarding_next">下一步</string>
+    <string name="onboarding_start">开始使用</string>
+    <string name="warn_expired">您的订阅已到期</string>
+    <string name="warn_expiry_today">您的订阅今天到期</string>
+    <string name="warn_expiry_days">您的订阅将在 %1$d 天后到期</string>
+    <string name="warn_low_data">流量仅剩 %1$d%%</string>
+    <string name="acc_toggle_theme">切换深色/浅色主题</string>
 </resources>

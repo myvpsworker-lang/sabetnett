@@ -38,12 +38,12 @@ class AngApplication : Application() {
 
         MmkvManager.initialize(this)
 
-        // Fresh installs start in Persian (RTL follows from the locale). An install that already ran
+        // Fresh installs start in English. An install that already ran
         // has a stored language, so its choice is left alone.
         if (MmkvManager.decodeSettingsString(AppConfig.PREF_LANGUAGE) == null &&
             !MmkvManager.decodeSettingsBool(AppConfig.PREF_APP_LOCALE_MIGRATED, false)
         ) {
-            MmkvManager.encodeSettings(AppConfig.PREF_LANGUAGE, Language.PERSIAN.code)
+            MmkvManager.encodeSettings(AppConfig.PREF_LANGUAGE, Language.ENGLISH.code)
         }
 
         AppLocaleManager.initialize(this)

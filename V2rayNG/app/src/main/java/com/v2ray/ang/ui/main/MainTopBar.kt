@@ -36,6 +36,7 @@ fun MainTopBar(
     onSearchClose: () -> Unit,
     onSearchToggle: (Boolean) -> Unit,
     onMenuClick: () -> Unit,
+    isDarkTheme: Boolean,
     onAction: (MainAction) -> Unit,
     onMoreMenuAction: (MainMoreMenuAction) -> Unit
 ) {
@@ -72,6 +73,12 @@ fun MainTopBar(
                 IconButton(onClick = { onSearchToggle(true) }) {
                     Icon(painterResource(R.drawable.ic_search_24dp), contentDescription = stringResource(R.string.acc_search))
                 }
+            }
+            IconButton(onClick = { onAction(MainAction.SetTheme(!isDarkTheme)) }) {
+                Icon(
+                    painterResource(if (isDarkTheme) R.drawable.ic_light_mode_24dp else R.drawable.ic_dark_mode_24dp),
+                    contentDescription = stringResource(R.string.acc_toggle_theme)
+                )
             }
             Box(modifier = Modifier.wrapContentSize(Alignment.TopEnd)) {
                 IconButton(onClick = { showImportMenu = true }) {

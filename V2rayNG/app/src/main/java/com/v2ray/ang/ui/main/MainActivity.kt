@@ -118,6 +118,10 @@ class MainActivity : HelperBaseComponentActivity() {
                     is MainAction.ShareClipboard -> shareToClipboard(action.guid)
                     is MainAction.ShareFullContent -> shareFullContentAsync(action.guid)
                     is MainAction.OpenSubscriptionLink -> openSubscriptionLink(action.url)
+                    is MainAction.OpenPromoLink -> {
+                        mainViewModel.onAction(action) // counts the click
+                        openSubscriptionLink(action.url)
+                    }
                     else -> mainViewModel.onAction(action)
                 }
             },

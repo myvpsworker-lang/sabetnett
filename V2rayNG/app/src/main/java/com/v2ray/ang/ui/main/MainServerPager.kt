@@ -58,6 +58,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.v2ray.ang.R
 import com.v2ray.ang.dto.LocateTarget
 import com.v2ray.ang.dto.entities.ProfileItem
+import com.v2ray.ang.handler.RemoteWarnings
+import com.v2ray.ang.handler.SubscriptionWarnings
 import com.v2ray.ang.dto.entities.SubscriptionUsageInfo
 import com.v2ray.ang.ui.compose.ReorderableGridItem
 import com.v2ray.ang.ui.compose.ReorderableListItem
@@ -88,6 +90,8 @@ fun GroupPagerPage(
     usageInfo: SubscriptionUsageInfo?,
     groupTitle: String,
     onOpenLink: (String) -> Unit,
+    supportOverride: String?,
+    warnings: RemoteWarnings,
     contentPadding: PaddingValues
 ) {
     val groupStateFlow = remember(groupId) {
@@ -113,6 +117,9 @@ fun GroupPagerPage(
     // The box floats over the list (the list scrolls underneath it), so the list is padded by the box height.
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
+    val warning = remember(usageInfo, warnings) {
+        usageInfo?.let { SubscriptionWarnings.compute(it, warnings, System.currentTimeMillis()) }
+    }
     var infoHeightPx by remember { mutableIntStateOf(0) }
     val listPadding = if (usageInfo == null) {
         contentPadding
@@ -143,15 +150,20 @@ fun GroupPagerPage(
             contentPadding = listPadding
         )
         if (usageInfo != null) {
-            SubscriptionInfoCard(
-                info = usageInfo,
-                fallbackTitle = groupTitle,
-                onOpenLink = onOpenLink,
-                onRefresh = { mainViewModel.onAction(MainAction.UpdateGroupSubscription(groupId)) },
-                modifier = Modifier
+            Column(
+                Modifier
                     .align(Alignment.TopCenter)
                     .onSizeChanged { infoHeightPx = it.height }
-            )
+            ) {
+                SubscriptionInfoCard(
+                    info = usageInfo,
+                    fallbackTitle = groupTitle,
+                    onOpenLink = onOpenLink,
+                    onRefresh = { mainViewModel.onAction(MainAction.UpdateGroupSubscription(groupId)) },
+                    supportOverride = supportOverride,
+                )
+                if (warning != null) SubscriptionWarningCard(warning)
+            }
         }
     }
 }

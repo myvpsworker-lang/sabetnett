@@ -1,5 +1,6 @@
 package com.v2ray.ang.ui.main
 
+import android.text.format.Formatter
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +26,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -53,6 +55,15 @@ fun MainScreen(
     val shareQRCodeBitmap = uiState.shareQRCodeBitmap
 
     val isDarkTheme = LocalDarkTheme.current
+    val speed by mainViewModel.speed.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val speedText = speed?.let {
+        stringResource(
+            R.string.speed_format,
+            Formatter.formatFileSize(context, it.downBytesPerSec),
+            Formatter.formatFileSize(context, it.upBytesPerSec)
+        )
+    }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var showSearch by remember { mutableStateOf(false) }
@@ -139,23 +150,16 @@ fun MainScreen(
         QRCodeDialog(bitmap = shareQRCodeBitmap, onDismiss = { onAction(MainAction.DismissQRCodeDialog) })
     }
 
-    if (uiState.showOnboarding) {
-        OnboardingDialog(
-            slides = uiState.sponsorsContent.onboarding,
-            onFinish = { onAction(MainAction.FinishOnboarding) }
-        )
-    }
-    uiState.announcement?.let { announcement ->
-        RemoteAnnouncementDialog(
-            announcement = announcement,
-            onOpenLink = { url -> onAction(MainAction.OpenSubscriptionLink(url)) },
-            onDismiss = { id -> onAction(MainAction.DismissAnnouncement(id)) }
-        )
-    }
+    RemoteDialogHost(
+        dialog = uiState.remoteDialog,
+        slides = uiState.sponsorsContent.onboarding,
+        onOpenLink = { url -> onAction(MainAction.OpenSubscriptionLink(url)) },
+        onAction = onAction,
+    )
     if (uiState.showSponsors) {
         SponsorsDialog(
             content = uiState.sponsorsContent,
-            onOpenLink = { url -> onAction(MainAction.OpenSubscriptionLink(url)) },
+            onOpenSponsor = { sponsor, url -> onAction(MainAction.OpenPromoLink("s", sponsor.id, url)) },
             onDismiss = { onAction(MainAction.HideSponsors) }
         )
     }
@@ -192,6 +196,7 @@ fun MainScreen(
                     },
                     onSearchToggle = { show: Boolean -> showSearch = show },
                     onMenuClick = { scope.launch { drawerState.open() } },
+                    isDarkTheme = isDarkTheme,
                     onAction = onAction,
                     onMoreMenuAction = { action ->
                         when (action) {
@@ -212,6 +217,7 @@ fun MainScreen(
             bottomBar = {
                 MainBottomBar(
                     displayText = displayText,
+                    speedText = speedText,
                     isRunning = isRunning,
                     isDarkTheme = isDarkTheme,
                     onAction = onAction
@@ -227,13 +233,11 @@ fun MainScreen(
                         .fillMaxSize()
                         .padding(innerPadding)
                 ) {
-                    uiState.banner?.let { banner ->
-                        RemoteBannerCard(
-                            banner = banner,
-                            onOpenLink = { url -> onAction(MainAction.OpenSubscriptionLink(url)) },
-                            onDismiss = { id -> onAction(MainAction.DismissBanner(id)) }
-                        )
-                    }
+                    RemoteBannerCard(
+                        banners = uiState.banners,
+                        onOpenLink = { banner, url -> onAction(MainAction.OpenPromoLink("b", banner.id, url)) },
+                        onDismiss = { id -> onAction(MainAction.DismissBanner(id)) }
+                    )
                     if (groups.size > 1) {
                         GroupTabBar(
                             groups = groups,
@@ -280,6 +284,8 @@ fun MainScreen(
                             usageInfo = group.usageInfo,
                             groupTitle = group.remarks,
                             onOpenLink = { url -> onAction(MainAction.OpenSubscriptionLink(url)) },
+                            supportOverride = uiState.sponsorsContent.links.subscriptionTelegram,
+                            warnings = uiState.sponsorsContent.warnings,
                             contentPadding = PaddingValues(
                                 start = 0.dp,
                                 top = 4.dp,

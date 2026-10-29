@@ -3,9 +3,9 @@ package com.v2ray.ang.ui.main
 import com.v2ray.ang.dto.ConnectionTestResult
 import com.v2ray.ang.dto.GroupMapItem
 import com.v2ray.ang.dto.LocateTarget
-import com.v2ray.ang.handler.RemoteAnnouncement
 import com.v2ray.ang.handler.RemoteBanner
 import com.v2ray.ang.handler.RemoteConfig
+import com.v2ray.ang.handler.RemoteDialog
 
 /** Locale-neutral state formatted only when it reaches the main UI. */
 sealed interface MainStatus {
@@ -30,15 +30,13 @@ data class MainUiState(
     val confirmRemove: Boolean = false,
     val doubleColumnDisplay: Boolean = false,
     val shareQRCodeBitmap: android.graphics.Bitmap? = null,
-    /** Remote banner the user has not closed yet. */
-    val banner: RemoteBanner? = null,
-    /** Remote announcement the user has not read yet. */
-    val announcement: RemoteAnnouncement? = null,
-    /** Sponsors page content; empty sponsors hides the drawer entry. */
+    /** Active remote banners the user has not closed, shown in rotation. */
+    val banners: List<RemoteBanner> = emptyList(),
+    /** The single remote message dialog to show now (slides, emergency, what's new or announcement). */
+    val remoteDialog: RemoteDialog = RemoteDialog.None,
+    /** Latest remote config (sponsors page, links, warnings, slides). */
     val sponsorsContent: RemoteConfig = RemoteConfig(),
-    val showSponsors: Boolean = false,
-    /** True while first-run slides should be shown (feature on, slides present, not yet finished). */
-    val showOnboarding: Boolean = false
+    val showSponsors: Boolean = false
 )
 
 /**
@@ -78,7 +76,12 @@ sealed interface MainAction {
     data object DismissQRCodeDialog : MainAction
     data class DismissBanner(val id: Int) : MainAction
     data class DismissAnnouncement(val id: Int) : MainAction
+    data class DismissEmergency(val id: Int) : MainAction
+    data class DismissWhatsNew(val versionCode: Int) : MainAction
     data object FinishOnboarding : MainAction
+    /** Opens a banner (`b`) or sponsor (`s`) link; the Activity opens it and the ViewModel counts the click. */
+    data class OpenPromoLink(val kind: String, val id: Int, val url: String) : MainAction
+    data class SetTheme(val dark: Boolean) : MainAction
     data object ShowSponsors : MainAction
     data object HideSponsors : MainAction
     data class OpenSubscriptionLink(val url: String) : MainAction

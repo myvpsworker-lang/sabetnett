@@ -563,4 +563,12 @@
     <string name="sub_info_unlimited">Không giới hạn</string>
 
     <string name="remote_open_link">Mở</string>
+    <string name="onboarding_skip">Bỏ qua</string>
+    <string name="onboarding_next">Tiếp</string>
+    <string name="onboarding_start">Bắt đầu</string>
+    <string name="warn_expired">Gói đăng ký của bạn đã hết hạn</string>
+    <string name="warn_expiry_today">Gói đăng ký của bạn hết hạn hôm nay</string>
+    <string name="warn_expiry_days">Gói đăng ký của bạn hết hạn sau %1$d ngày</string>
+    <string name="warn_low_data">Chỉ còn %1$d%% dung lượng</string>
+    <string name="acc_toggle_theme">Chuyển giao diện tối/sáng</string>
 </resources>

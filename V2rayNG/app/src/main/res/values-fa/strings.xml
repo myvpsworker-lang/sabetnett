@@ -565,4 +565,12 @@
     <string name="sub_info_unlimited">نامحدود</string>
 
     <string name="remote_open_link">باز کردن</string>
+    <string name="onboarding_skip">رد کردن</string>
+    <string name="onboarding_next">بعدی</string>
+    <string name="onboarding_start">ورود به برنامه</string>
+    <string name="warn_expired">اشتراک شما تمام شده است</string>
+    <string name="warn_expiry_today">اشتراک شما امروز به پایان می‌رسد</string>
+    <string name="warn_expiry_days">اشتراک شما %1$d روز دیگر تمام می‌شود</string>
+    <string name="warn_low_data">فقط %1$d%% از حجم شما باقی مانده است</string>
+    <string name="acc_toggle_theme">تغییر حالت تاریک/روشن</string>
 </resources>

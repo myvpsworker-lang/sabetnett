@@ -87,6 +87,8 @@ internal fun SubscriptionInfoCard(
     fallbackTitle: String,
     onOpenLink: (String) -> Unit,
     onRefresh: () -> Unit,
+    /** Admin-set link for the support icon; when present it replaces the panel's own support link. */
+    supportOverride: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val model = remember(info) { buildSubscriptionInfoUiModel(info, System.currentTimeMillis()) }
@@ -110,7 +112,7 @@ internal fun SubscriptionInfoCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                model.supportUrl?.let { url ->
+                (supportOverride ?: model.supportUrl)?.let { url ->
                     CardIconButton(
                         iconRes = if (SubscriptionInfoParser.isTelegramLink(url)) {
                             R.drawable.ic_telegram_24dp
