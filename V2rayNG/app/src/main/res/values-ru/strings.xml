@@ -577,4 +577,6 @@
     <string name="warn_expiry_days">Подписка истекает через %1$d дн.</string>
     <string name="warn_low_data">Осталось только %1$d%% трафика</string>
     <string name="acc_toggle_theme">Переключить тёмную/светлую тему</string>
+    <string name="notification_channel_admin_messages">Сообщения SabetNet</string>
+    <string name="toast_smart_reconnect">Соединение нестабильно, переключаемся на другой сервер</string>
 </resources>

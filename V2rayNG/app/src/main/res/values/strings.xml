@@ -575,4 +575,6 @@
     <string name="warn_low_data">Only %1$d%% of your data is left</string>
     <string name="acc_toggle_theme">Toggle dark/light theme</string>
     <string name="speed_format" translatable="false">↓ %1$s/s   ↑ %2$s/s</string>
+    <string name="notification_channel_admin_messages">Messages from SabetNet</string>
+    <string name="toast_smart_reconnect">Connection unstable, switching to another server</string>
 </resources>

@@ -571,4 +571,6 @@
     <string name="warn_expiry_days">Gói đăng ký của bạn hết hạn sau %1$d ngày</string>
     <string name="warn_low_data">Chỉ còn %1$d%% dung lượng</string>
     <string name="acc_toggle_theme">Chuyển giao diện tối/sáng</string>
+    <string name="notification_channel_admin_messages">Tin nhắn từ SabetNet</string>
+    <string name="toast_smart_reconnect">Kết nối không ổn định, đang chuyển sang máy chủ khác</string>
 </resources>

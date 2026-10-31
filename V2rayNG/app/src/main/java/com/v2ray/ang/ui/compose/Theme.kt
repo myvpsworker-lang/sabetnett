@@ -6,6 +6,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import com.v2ray.ang.AppConfig
 import com.v2ray.ang.handler.MmkvManager
+import com.v2ray.ang.handler.RemoteConfigManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -146,6 +148,19 @@ val toastInfoBg = Color(0xD93F51B5) // Indigo Blue
 val toastIconCircleBg = Color(0x33FFFFFF) // Semi-transparent White
 val toastTextColor = Color.White // White
 
+private fun ColorScheme.withAccent(accentArgb: Int?, dark: Boolean): ColorScheme {
+    if (accentArgb == null) return this
+    val p = AccentMath.primaryFor(accentArgb, dark)
+    return copy(
+        primary = Color(p.primary),
+        onPrimary = Color(p.onPrimary),
+        primaryContainer = Color(p.container),
+        onPrimaryContainer = Color(p.onContainer),
+        inversePrimary = Color(p.inverse),
+        surfaceTint = Color(p.primary),
+    )
+}
+
 object ThemeManager {
     private val _themeMode = MutableStateFlow(
         MmkvManager.decodeSettingsString(AppConfig.PREF_UI_MODE_NIGHT, "0") ?: "0"
@@ -194,7 +209,11 @@ fun AppTheme(
     content: @Composable () -> Unit
 ) {
     val dynamicColor by ThemeManager.dynamicColorEnabled.collectAsState()
+    val remote by RemoteConfigManager.config.collectAsState()
     val context = LocalContext.current
+    val useDynamic = dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    // The admin's accent applies only to the built-in palette; Material You (chosen by the user) wins.
+    val accent = remote.theme.accentArgb.takeIf { !useDynamic }
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
@@ -202,7 +221,7 @@ fun AppTheme(
 
         darkTheme -> DarkColor
         else -> LightColor
-    }
+    }.withAccent(accent, darkTheme)
     val snackbarController = rememberAppSnackbarController()
 
     val view = LocalView.current

@@ -571,4 +571,6 @@
     <string name="warn_expiry_days">您的订阅将在 %1$d 天后到期</string>
     <string name="warn_low_data">流量仅剩 %1$d%%</string>
     <string name="acc_toggle_theme">切换深色/浅色主题</string>
+    <string name="notification_channel_admin_messages">SabetNet 消息</string>
+    <string name="toast_smart_reconnect">连接不稳定，正在切换到其他服务器</string>
 </resources>

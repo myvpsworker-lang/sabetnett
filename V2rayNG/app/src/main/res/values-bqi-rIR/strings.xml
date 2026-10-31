@@ -573,4 +573,6 @@
     <string name="warn_expiry_days">اشتراک شما %1$d روز دیگه تموم بونه</string>
     <string name="warn_low_data">فقط %1$d%% از حجم شما مونده</string>
     <string name="acc_toggle_theme">تغییر حالت تاریک/روشن</string>
+    <string name="notification_channel_admin_messages">پیام‌ونی SabetNet</string>
+    <string name="toast_smart_reconnect">اتصال ناپایدار بیه، به سرور دیگه ای منتقل بیدی</string>
 </resources>

@@ -581,4 +581,6 @@
     <string name="warn_expiry_days">ينتهي اشتراكك خلال %1$d أيام</string>
     <string name="warn_low_data">تبقى %1$d%% فقط من بياناتك</string>
     <string name="acc_toggle_theme">تبديل الوضع الداكن/الفاتح</string>
+    <string name="notification_channel_admin_messages">رسائل SabetNet</string>
+    <string name="toast_smart_reconnect">الاتصال غير مستقر، جارٍ التبديل إلى خادم آخر</string>
 </resources>

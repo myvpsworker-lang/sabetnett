@@ -93,6 +93,8 @@ object NotificationManager {
 
         mBuilder = NotificationCompat.Builder(service, channelId)
             .setSmallIcon(R.drawable.ic_stat_name)
+            // Brand accent behind the small icon and action buttons; purely cosmetic builder property.
+            .setColor(0xFF4F5BD5.toInt())
             .setContentTitle(currentConfig?.remarks ?: service.getString(R.string.app_name))
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)

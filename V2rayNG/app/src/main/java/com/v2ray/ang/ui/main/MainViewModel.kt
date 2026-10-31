@@ -25,6 +25,7 @@ import com.v2ray.ang.handler.FastestServerPicker
 import com.v2ray.ang.ui.compose.ThemeManager
 import com.v2ray.ang.handler.RemoteConfigManager
 import com.v2ray.ang.handler.RemoteDialogPicker
+import com.v2ray.ang.handler.SmartReconnectPolicy
 import com.v2ray.ang.handler.TrafficSample
 import com.v2ray.ang.handler.TrafficSpeed
 import com.v2ray.ang.handler.TrafficSpeedCalculator
@@ -39,6 +40,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -47,6 +50,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -151,6 +155,16 @@ class MainViewModel(
     private var reloadJob: Job? = null
     private var testResultFlushJob: Job? = null
     private var fastestJob: Job? = null
+
+    // ---------- Smart reconnect ----------
+    private val smartPolicy = SmartReconnectPolicy()
+    private var smartJob: Job? = null
+    private var smartProbeId: String? = null
+    private var smartProbeCounter = 0
+
+    /** Asks the Activity to restart the running tunnel after the selected server was changed here. */
+    private val _restartRequests = Channel<Unit>(Channel.CONFLATED)
+    val restartRequests: Flow<Unit> = _restartRequests.receiveAsFlow()
     private val pendingTestResults = linkedMapOf<String, Long>()
 
     private val testRequests = MainTestRequests()
@@ -213,6 +227,11 @@ class MainViewModel(
 
             MainServiceEvent.StateStopSuccess -> updateRunningState(false)
             is MainServiceEvent.MeasureDelayResult -> {
+                if (event.requestId == smartProbeId) {
+                    smartProbeId = null
+                    onSmartProbeResult(event.result.delayMillis >= 0)
+                    return
+                }
                 if (!uiState.value.isRunning || !testRequests.completeCurrent(event.requestId)) return
                 _uiState.update { it.copy(isTesting = testRequests.isTesting, status = MainStatus.ConnectionTest(event.result)) }
             }
@@ -468,6 +487,68 @@ class MainViewModel(
         }
     }
 
+    /**
+     * While connected and enabled by the admin, sends a silent real-delay probe through the running core
+     * every [SMART_PROBE_INTERVAL_MS]. Runs only while the app process is alive; the service is untouched.
+     */
+    private fun startSmartWatch() {
+        if (smartJob?.isActive == true) return
+        smartPolicy.reset()
+        smartJob = viewModelScope.launch {
+            while (true) {
+                delay(SMART_PROBE_INTERVAL_MS)
+                if (!RemoteConfigManager.config.value.features.smartReconnect) continue
+                if (!uiState.value.isRunning || smartProbeId != null) continue
+                smartProbeCounter++
+                val id = "smart-$smartProbeCounter"
+                smartProbeId = id
+                dataSource.testCurrentServerRealPing(id)
+                delay(SMART_PROBE_TIMEOUT_MS)
+                // No answer at all (daemon busy or gone) counts as a failed probe.
+                if (smartProbeId == id) {
+                    smartProbeId = null
+                    onSmartProbeResult(false)
+                }
+            }
+        }
+    }
+
+    private fun stopSmartWatch() {
+        smartJob?.cancel()
+        smartJob = null
+        smartProbeId = null
+        smartPolicy.reset()
+    }
+
+    private fun onSmartProbeResult(ok: Boolean) {
+        if (!smartPolicy.onProbe(ok, SystemClock.elapsedRealtime())) return
+        viewModelScope.launch {
+            try {
+                val current = uiState.value.selectedGuid
+                val candidates = currentServers().filter { it.guid != current }
+                val best = withContext(ioDispatcher) {
+                    FastestServerPicker.pick(
+                        candidates.mapNotNull { c ->
+                            val host = c.profile.server
+                            val port = c.profile.serverPort?.toIntOrNull()
+                            if (host.isNullOrBlank() || port == null) null else FastestServerPicker.Candidate(c.guid, host, port)
+                        }
+                    )
+                }
+                // A null result means no server answered at all: the device itself is offline, so switching is pointless.
+                if (best == null || !uiState.value.isRunning) return@launch
+                LogUtil.i(AppConfig.TAG, "Smart reconnect: switching server, from=$current to=$best")
+                updateSelectedGuid(best)
+                toast(R.string.toast_smart_reconnect)
+                _restartRequests.trySend(Unit)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (e: Exception) {
+                LogUtil.e(AppConfig.TAG, "Smart reconnect: switching failed", e)
+            }
+        }
+    }
+
     fun refreshUiSettings() {
         _uiState.update {
             it.copy(
@@ -579,6 +660,7 @@ class MainViewModel(
     }
 
     fun setupGroupTab(forceRefresh: Boolean = false): Job {
+        stopSmartWatch()
         setupGroupJob?.cancel()
         preloadJob?.cancel()
         selectedGroupLoadJob?.cancel()
@@ -1063,6 +1145,7 @@ class MainViewModel(
 
     // ---------- Running state ----------
     private fun updateRunningState(running: Boolean, clearTestingText: Boolean = true) {
+        if (running) startSmartWatch() else stopSmartWatch()
         // The direct download may have been blocked; retry through the tunnel once it is up.
         if (running && !_uiState.value.isRunning) viewModelScope.launch { RemoteConfigManager.refresh() }
         if (!running || clearTestingText) testRequests.invalidateCurrent()
@@ -1101,5 +1184,7 @@ class MainViewModel(
     private companion object {
         const val TEST_RESULT_FLUSH_INTERVAL_MS = 500L
         const val SPEED_SAMPLE_INTERVAL_MS = 1000L
+        const val SMART_PROBE_INTERVAL_MS = 40_000L
+        const val SMART_PROBE_TIMEOUT_MS = 15_000L
     }
 }

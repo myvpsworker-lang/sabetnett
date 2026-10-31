@@ -40,7 +40,13 @@ data class RemoteWhatsNew(val versionCode: Int, val title: String, val text: Str
 
 data class RemoteSponsor(val id: Int, val title: String, val desc: String, val url: String?)
 
-data class RemoteFeatures(val autoFastest: Boolean = false, val onboarding: Boolean = false)
+data class RemoteFeatures(val autoFastest: Boolean = false, val onboarding: Boolean = false, val smartReconnect: Boolean = false)
+
+/** A system notification the admin sends to every install; [id] changes whenever the admin re-sends it. */
+data class RemotePush(val id: Int, val title: String, val text: String, val url: String?)
+
+/** [accentArgb] is a validated opaque `#RRGGBB` accent for the app palette, or null for the built-in one. */
+data class RemoteTheme(val accentArgb: Int? = null)
 
 data class RemoteWarnings(val enabled: Boolean = false, val expiryDays: Int = 3, val lowPercent: Int = 10)
 
@@ -67,6 +73,8 @@ data class RemoteConfig(
     val banners: List<RemoteBanner> = emptyList(),
     val announcement: RemoteAnnouncement? = null,
     val emergency: RemoteEmergency? = null,
+    val push: RemotePush? = null,
+    val theme: RemoteTheme = RemoteTheme(),
     val whatsNew: RemoteWhatsNew? = null,
     val sponsorsTitle: String = "",
     val sponsorsIntro: String = "",
@@ -86,6 +94,7 @@ data class RemoteDismissed(
     val announcementId: Int = 0,
     val onboardingSeen: Boolean = false,
     val whatsNewSeen: Int = 0,
+    val pushSeenId: Int = 0,
 )
 
 /**
@@ -128,6 +137,13 @@ object RemoteConfigParser {
                     RemoteEmergency(m.int("id"), m.str("title", MAX_TITLE), text, link(m.str("url", 500)))
                 } else null
             },
+            push = root.obj("push")?.let { m ->
+                val text = m.str("text", MAX_TEXT)
+                if (m.bool("enabled") && text.isNotEmpty() && m.int("id") > 0) {
+                    RemotePush(m.int("id"), m.str("title", MAX_TITLE), text, link(m.str("url", 500)))
+                } else null
+            },
+            theme = RemoteTheme(root.obj("theme")?.str("accent", 7)?.let { parseColor(it) }),
             whatsNew = root.obj("whatsNew")?.let { w ->
                 val text = w.str("text", MAX_TEXT)
                 val code = w.int("versionCode")
@@ -145,7 +161,7 @@ object RemoteConfigParser {
                 }
                 ?.take(MAX_SPONSORS)
                 .orEmpty(),
-            features = RemoteFeatures(feat?.bool("autoFastest") == true, feat?.bool("onboarding") == true),
+            features = RemoteFeatures(feat?.bool("autoFastest") == true, feat?.bool("onboarding") == true, feat?.bool("smartReconnect") == true),
             warnings = RemoteWarnings(
                 enabled = warn?.bool("enabled") == true,
                 expiryDays = (warn?.int("expiryDays") ?: 3).coerceIn(0, 60),
@@ -247,6 +263,7 @@ object RemoteConfigManager {
     private const val PREF_CACHE = "pref_remote_config_cache"
     private const val PREF_BANNERS_DISMISSED = "pref_remote_banners_dismissed"
     private const val PREF_ANNOUNCEMENT_SEEN = "pref_remote_announcement_seen"
+    private const val PREF_PUSH_SEEN = "pref_remote_push_seen"
     private const val PREF_ONBOARDING_SEEN = "pref_remote_onboarding_seen"
     private const val PREF_WHATS_NEW_SEEN = "pref_remote_whats_new_seen"
     private const val PREF_DEFAULT_SUB_URL = "pref_remote_default_sub_url"
@@ -278,6 +295,7 @@ object RemoteConfigManager {
                     announcementId = MmkvManager.decodeSettingsInt(PREF_ANNOUNCEMENT_SEEN, 0),
                     onboardingSeen = MmkvManager.decodeSettingsBool(PREF_ONBOARDING_SEEN, false),
                     whatsNewSeen = MmkvManager.decodeSettingsInt(PREF_WHATS_NEW_SEEN, 0),
+                    pushSeenId = MmkvManager.decodeSettingsInt(PREF_PUSH_SEEN, 0),
                 )
             }
         } catch (e: Exception) {
@@ -352,6 +370,11 @@ object RemoteConfigManager {
     fun markAnnouncementSeen(id: Int) {
         MmkvManager.encodeSettings(PREF_ANNOUNCEMENT_SEEN, id)
         _dismissed.update { it.copy(announcementId = id) }
+    }
+
+    fun markPushSeen(id: Int) {
+        MmkvManager.encodeSettings(PREF_PUSH_SEEN, id)
+        _dismissed.update { it.copy(pushSeenId = id) }
     }
 
     fun markWhatsNewSeen(versionCode: Int) {
