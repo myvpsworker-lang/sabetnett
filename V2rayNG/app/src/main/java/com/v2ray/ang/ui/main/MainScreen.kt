@@ -286,6 +286,9 @@ fun MainScreen(
                             onOpenLink = { url -> onAction(MainAction.OpenSubscriptionLink(url)) },
                             supportOverride = uiState.sponsorsContent.links.subscriptionTelegram,
                             warnings = uiState.sponsorsContent.warnings,
+                            panel = uiState.toConnectPanelModel(),
+                            serversExpanded = uiState.serversExpanded,
+                            isTesting = uiState.isTesting,
                             contentPadding = PaddingValues(
                                 start = 0.dp,
                                 top = 4.dp,

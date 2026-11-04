@@ -177,6 +177,7 @@ class MainViewModel(
         collectServiceEvents()
         setupGroupTab()
         collectRemoteConfig()
+        loadSelectedInfo(_uiState.value.selectedGuid)
     }
 
     /** Mirrors the remote content into UI state, hiding what the user already dismissed or what is out of schedule. */
@@ -229,11 +230,18 @@ class MainViewModel(
             is MainServiceEvent.MeasureDelayResult -> {
                 if (event.requestId == smartProbeId) {
                     smartProbeId = null
+                    _uiState.update { it.copy(selectedPingMs = event.result.delayMillis.coerceAtLeast(-1L)) }
                     onSmartProbeResult(event.result.delayMillis >= 0)
                     return
                 }
                 if (!uiState.value.isRunning || !testRequests.completeCurrent(event.requestId)) return
-                _uiState.update { it.copy(isTesting = testRequests.isTesting, status = MainStatus.ConnectionTest(event.result)) }
+                _uiState.update {
+                    it.copy(
+                        isTesting = testRequests.isTesting,
+                        status = MainStatus.ConnectionTest(event.result),
+                        selectedPingMs = event.result.delayMillis.coerceAtLeast(-1L),
+                    )
+                }
             }
 
             is MainServiceEvent.MeasureConfigSuccess -> {
@@ -297,6 +305,9 @@ class MainViewModel(
         }
         if (updates.isEmpty()) return
         if (testRequests.bulk?.id != request.id) return
+        uiState.value.selectedGuid?.let { selected ->
+            updates[selected]?.let { ms -> _uiState.update { it.copy(selectedPingMs = ms.coerceAtLeast(-1L)) } }
+        }
         mutableServerGroupState(request.groupId).update { current ->
             current.copy(
                 servers = applyTestDelayResults(current.servers, updates),
@@ -362,6 +373,7 @@ class MainViewModel(
     fun onAction(action: MainAction) {
         when (action) {
             MainAction.Initialize -> initialize()
+            MainAction.ToggleServersExpanded -> _uiState.update { it.copy(serversExpanded = !it.serversExpanded) }
             MainAction.RefreshGroups -> setupGroupTab(forceRefresh = true)
             MainAction.TestAllServers -> testAllRealPing(true)
             MainAction.TestRealAllServers -> testAllRealPing()
@@ -685,13 +697,15 @@ class MainViewModel(
                 groupServerFlows.keys.removeAll { it !in validIds }
                 groupLoadMutexes.keys.removeAll { it !in validIds }
 
+                val selectedNow = dataSource.getSelectServer()
                 _uiState.update {
                     it.copy(
                         groups = groups,
                         selectedGroupId = selectedGroup,
-                        selectedGuid = dataSource.getSelectServer(),
+                        selectedGuid = selectedNow,
                     )
                 }
+                loadSelectedInfo(selectedNow)
                 groups.forEach { mutableServerGroupState(it.id) }
 
                 if (groups.isEmpty()) {
@@ -991,13 +1005,25 @@ class MainViewModel(
         }
     }
 
+    /** Loads the selected server's name and last saved ping for the connect panel. */
+    private fun loadSelectedInfo(guid: String?) {
+        viewModelScope.launch(ioDispatcher) {
+            val name = guid?.let { dataSource.decodeServerConfig(it)?.remarks }
+            val ping = guid?.let { dataSource.decodeAffiliationInfo(it)?.testDelayMillis }?.takeIf { it != 0L }
+            _uiState.update { if (it.selectedGuid == guid) it.copy(selectedServerName = name, selectedPingMs = ping) else it }
+        }
+    }
+
     fun updateSelectedGuid(guid: String) {
         dataSource.setSelectServer(guid)
         _uiState.update { it.copy(selectedGuid = guid) }
+        loadSelectedInfo(guid)
     }
 
     fun refreshSelectedGuid() {
-        _uiState.update { it.copy(selectedGuid = dataSource.getSelectServer()) }
+        val guid = dataSource.getSelectServer()
+        _uiState.update { it.copy(selectedGuid = guid) }
+        loadSelectedInfo(guid)
     }
 
     fun removeServerAndRefresh(guid: String) {
@@ -1152,6 +1178,11 @@ class MainViewModel(
         _uiState.update { state ->
             state.copy(
                 isRunning = running,
+                connectedSinceMs = when {
+                    !running -> null
+                    state.isRunning && state.connectedSinceMs != null -> state.connectedSinceMs
+                    else -> SystemClock.elapsedRealtime()
+                },
                 isTesting = testRequests.isTesting,
                 status = if (!clearTestingText && state.isRunning == running) state.status
                 else if (running) MainStatus.Connected else MainStatus.Disconnected

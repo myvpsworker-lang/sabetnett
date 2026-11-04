@@ -36,7 +36,15 @@ data class MainUiState(
     val remoteDialog: RemoteDialog = RemoteDialog.None,
     /** Latest remote config (sponsors page, links, warnings, slides). */
     val sponsorsContent: RemoteConfig = RemoteConfig(),
-    val showSponsors: Boolean = false
+    val showSponsors: Boolean = false,
+    /** True while the server list is open; false shows the connect circle instead. */
+    val serversExpanded: Boolean = false,
+    /** Elapsed-realtime (ms) when the tunnel came up in this app session; null while disconnected. */
+    val connectedSinceMs: Long? = null,
+    /** Name of the selected server, for the connect panel. */
+    val selectedServerName: String? = null,
+    /** Last ping of the selected server in ms; negative means the last test failed, null means never tested. */
+    val selectedPingMs: Long? = null,
 )
 
 /**
@@ -46,6 +54,7 @@ sealed interface MainAction {
     data object Initialize : MainAction
     data object RefreshGroups : MainAction
     data object ToggleService : MainAction
+    data object ToggleServersExpanded : MainAction
     data object TestCurrentServer : MainAction
     data object TestAllServers : MainAction
     data object TestRealAllServers : MainAction

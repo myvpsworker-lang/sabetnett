@@ -575,4 +575,13 @@
     <string name="acc_toggle_theme">تغییر حالت تاریک/روشن</string>
     <string name="notification_channel_admin_messages">پیام‌ونی SabetNet</string>
     <string name="toast_smart_reconnect">اتصال ناپایدار بیه، به سرور دیگه ای منتقل بیدی</string>
+    <string name="connect_state_on">وصل</string>
+    <string name="connect_state_off">قطع</string>
+    <string name="acc_show_servers">نشون دادن سرورون</string>
+    <string name="acc_hide_servers">بستن سرورون</string>
+    <string name="acc_ping_servers">پینگ همه سرورون</string>
+    <string name="acc_cancel_ping">وس تست پینگ</string>
+    <string name="connect_server_none">سروری انتخاب نبیه</string>
+    <string name="connect_ping_failed">ناموفق</string>
+    <string name="acc_toggle_vpn">روشن یا خاموش کردن وی‌پی‌ان</string>
 </resources>

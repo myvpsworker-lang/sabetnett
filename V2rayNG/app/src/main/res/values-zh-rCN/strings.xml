@@ -573,4 +573,13 @@
     <string name="acc_toggle_theme">切换深色/浅色主题</string>
     <string name="notification_channel_admin_messages">SabetNet 消息</string>
     <string name="toast_smart_reconnect">连接不稳定，正在切换到其他服务器</string>
+    <string name="connect_state_on">已连接</string>
+    <string name="connect_state_off">未连接</string>
+    <string name="acc_show_servers">显示服务器</string>
+    <string name="acc_hide_servers">隐藏服务器</string>
+    <string name="acc_ping_servers">测试所有服务器延迟</string>
+    <string name="acc_cancel_ping">停止延迟测试</string>
+    <string name="connect_server_none">未选择服务器</string>
+    <string name="connect_ping_failed">超时</string>
+    <string name="acc_toggle_vpn">开启或关闭 VPN</string>
 </resources>

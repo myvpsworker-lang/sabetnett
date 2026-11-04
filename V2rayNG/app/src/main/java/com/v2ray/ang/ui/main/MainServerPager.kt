@@ -36,14 +36,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -92,6 +88,9 @@ fun GroupPagerPage(
     onOpenLink: (String) -> Unit,
     supportOverride: String?,
     warnings: RemoteWarnings,
+    panel: ConnectPanelModel,
+    serversExpanded: Boolean,
+    isTesting: Boolean,
     contentPadding: PaddingValues
 ) {
     val groupStateFlow = remember(groupId) {
@@ -114,57 +113,72 @@ fun GroupPagerPage(
             remove = onRemoveServer,
         )
     }
-    // The box floats over the list (the list scrolls underneath it), so the list is padded by the box height.
-    val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
     val warning = remember(usageInfo, warnings) {
         usageInfo?.let { SubscriptionWarnings.compute(it, warnings, System.currentTimeMillis()) }
     }
-    var infoHeightPx by remember { mutableIntStateOf(0) }
-    val listPadding = if (usageInfo == null) {
-        contentPadding
-    } else {
-        PaddingValues(
-            start = contentPadding.calculateStartPadding(layoutDirection),
-            top = contentPadding.calculateTopPadding() + with(density) { infoHeightPx.toDp() },
-            end = contentPadding.calculateEndPadding(layoutDirection),
-            bottom = contentPadding.calculateBottomPadding()
-        )
-    }
+    val tools = GroupTools(
+        expanded = serversExpanded,
+        isTesting = isTesting,
+        onToggleServers = { mainViewModel.onAction(MainAction.ToggleServersExpanded) },
+        onPing = {
+            mainViewModel.onAction(if (isTesting) MainAction.CancelTesting else MainAction.TestRealAllServers)
+        },
+    )
+    val onToggleConnection = { mainViewModel.onAction(MainAction.ToggleService) }
+    val bottomInset = contentPadding.calculateBottomPadding()
+    // The compact connect panel sits above the bottom bar, so the list ends where the panel begins.
+    val listPadding = PaddingValues(
+        start = contentPadding.calculateStartPadding(layoutDirection),
+        top = contentPadding.calculateTopPadding(),
+        end = contentPadding.calculateEndPadding(layoutDirection),
+        bottom = 0.dp
+    )
 
-    Box(Modifier.fillMaxSize()) {
-        ServerListPage(
-            rows = groupState.rows,
-            selectedGuid = selectedGuid,
-            locateTarget = locateTarget?.takeIf { it.groupId == groupId },
-            canReorder = canReorder,
-            doubleColumnDisplay = doubleColumnDisplay,
-            groupId = groupId,
-            lazyListStates = lazyListStates,
-            lazyGridStates = lazyGridStates,
-            actions = actions,
-            onLocateHandled = { mainViewModel.onAction(MainAction.LocateHandled) },
-            onMoveServer = { fromIndex, toIndex ->
-                mainViewModel.moveServer(groupId, fromIndex, toIndex)
-            },
-            contentPadding = listPadding
-        )
+    Column(Modifier.fillMaxSize()) {
         if (usageInfo != null) {
-            Column(
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .onSizeChanged { infoHeightPx = it.height }
-            ) {
-                SubscriptionInfoCard(
-                    info = usageInfo,
-                    fallbackTitle = groupTitle,
-                    onOpenLink = onOpenLink,
-                    onRefresh = { mainViewModel.onAction(MainAction.UpdateGroupSubscription(groupId)) },
-                    supportOverride = supportOverride,
+            SubscriptionInfoCard(
+                info = usageInfo,
+                fallbackTitle = groupTitle,
+                onOpenLink = onOpenLink,
+                onRefresh = { mainViewModel.onAction(MainAction.UpdateGroupSubscription(groupId)) },
+                supportOverride = supportOverride,
+                tools = tools,
+            )
+            if (warning != null) SubscriptionWarningCard(warning)
+        } else {
+            GroupHeaderCard(title = groupTitle, tools = tools)
+        }
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            if (serversExpanded) {
+                ServerListPage(
+                    rows = groupState.rows,
+                    selectedGuid = selectedGuid,
+                    locateTarget = locateTarget?.takeIf { it.groupId == groupId },
+                    canReorder = canReorder,
+                    doubleColumnDisplay = doubleColumnDisplay,
+                    groupId = groupId,
+                    lazyListStates = lazyListStates,
+                    lazyGridStates = lazyGridStates,
+                    actions = actions,
+                    onLocateHandled = { mainViewModel.onAction(MainAction.LocateHandled) },
+                    onMoveServer = { fromIndex, toIndex ->
+                        mainViewModel.moveServer(groupId, fromIndex, toIndex)
+                    },
+                    contentPadding = listPadding
                 )
-                if (warning != null) SubscriptionWarningCard(warning)
+            } else {
+                ConnectPanelFull(
+                    model = panel,
+                    onToggle = onToggleConnection,
+                    modifier = Modifier.align(Alignment.Center)
+                )
             }
         }
+        if (serversExpanded) {
+            ConnectPanelCompact(model = panel, onToggle = onToggleConnection)
+        }
+        Spacer(Modifier.height(bottomInset))
     }
 }
 

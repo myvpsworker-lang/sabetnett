@@ -573,4 +573,13 @@
     <string name="acc_toggle_theme">Chuyển giao diện tối/sáng</string>
     <string name="notification_channel_admin_messages">Tin nhắn từ SabetNet</string>
     <string name="toast_smart_reconnect">Kết nối không ổn định, đang chuyển sang máy chủ khác</string>
+    <string name="connect_state_on">Đã kết nối</string>
+    <string name="connect_state_off">Đã ngắt kết nối</string>
+    <string name="acc_show_servers">Hiện máy chủ</string>
+    <string name="acc_hide_servers">Ẩn máy chủ</string>
+    <string name="acc_ping_servers">Kiểm tra ping tất cả máy chủ</string>
+    <string name="acc_cancel_ping">Dừng kiểm tra ping</string>
+    <string name="connect_server_none">Chưa chọn máy chủ</string>
+    <string name="connect_ping_failed">Hết thời gian</string>
+    <string name="acc_toggle_vpn">Bật hoặc tắt VPN</string>
 </resources>

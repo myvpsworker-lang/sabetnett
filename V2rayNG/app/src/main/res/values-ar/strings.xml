@@ -583,4 +583,13 @@
     <string name="acc_toggle_theme">تبديل الوضع الداكن/الفاتح</string>
     <string name="notification_channel_admin_messages">رسائل SabetNet</string>
     <string name="toast_smart_reconnect">الاتصال غير مستقر، جارٍ التبديل إلى خادم آخر</string>
+    <string name="connect_state_on">متصل</string>
+    <string name="connect_state_off">غير متصل</string>
+    <string name="acc_show_servers">عرض الخوادم</string>
+    <string name="acc_hide_servers">إخفاء الخوادم</string>
+    <string name="acc_ping_servers">اختبار ping لكل الخوادم</string>
+    <string name="acc_cancel_ping">إيقاف اختبار ping</string>
+    <string name="connect_server_none">لم يتم اختيار خادم</string>
+    <string name="connect_ping_failed">انتهت المهلة</string>
+    <string name="acc_toggle_vpn">تشغيل أو إيقاف VPN</string>
 </resources>

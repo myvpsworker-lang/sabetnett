@@ -579,4 +579,13 @@
     <string name="acc_toggle_theme">Переключить тёмную/светлую тему</string>
     <string name="notification_channel_admin_messages">Сообщения SabetNet</string>
     <string name="toast_smart_reconnect">Соединение нестабильно, переключаемся на другой сервер</string>
+    <string name="connect_state_on">Подключено</string>
+    <string name="connect_state_off">Отключено</string>
+    <string name="acc_show_servers">Показать серверы</string>
+    <string name="acc_hide_servers">Скрыть серверы</string>
+    <string name="acc_ping_servers">Проверить пинг всех серверов</string>
+    <string name="acc_cancel_ping">Остановить проверку</string>
+    <string name="connect_server_none">Сервер не выбран</string>
+    <string name="connect_ping_failed">Таймаут</string>
+    <string name="acc_toggle_vpn">Включить или выключить VPN</string>
 </resources>

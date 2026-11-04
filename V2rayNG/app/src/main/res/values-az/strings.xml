@@ -575,4 +575,13 @@
     <string name="acc_toggle_theme">Tünd/açıq temanı dəyiş</string>
     <string name="notification_channel_admin_messages">SabetNet mesajları</string>
     <string name="toast_smart_reconnect">Bağlantı qeyri-sabitdir, başqa serverə keçilir</string>
+    <string name="connect_state_on">Qoşulub</string>
+    <string name="connect_state_off">Qoşulmayıb</string>
+    <string name="acc_show_servers">Serverləri göstər</string>
+    <string name="acc_hide_servers">Serverləri gizlət</string>
+    <string name="acc_ping_servers">Bütün serverlərin pinqini yoxla</string>
+    <string name="acc_cancel_ping">Pinq testini dayandır</string>
+    <string name="connect_server_none">Server seçilməyib</string>
+    <string name="connect_ping_failed">Vaxt bitdi</string>
+    <string name="acc_toggle_vpn">VPN-i aç və ya bağla</string>
 </resources>

@@ -1,5 +1,6 @@
 package com.v2ray.ang.ui.main
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,10 +18,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -89,6 +92,7 @@ internal fun SubscriptionInfoCard(
     onRefresh: () -> Unit,
     /** Admin-set link for the support icon; when present it replaces the panel's own support link. */
     supportOverride: String? = null,
+    tools: GroupTools,
     modifier: Modifier = Modifier,
 ) {
     val model = remember(info) { buildSubscriptionInfoUiModel(info, System.currentTimeMillis()) }
@@ -135,6 +139,7 @@ internal fun SubscriptionInfoCard(
                     contentDescription = stringResource(R.string.title_sub_update),
                     onClick = onRefresh,
                 )
+                GroupToolButtons(tools)
             }
 
             // One semantics node for the read-only figures so TalkBack reads them in one go.
@@ -159,6 +164,59 @@ internal fun SubscriptionInfoCard(
                     )
                 }
             }
+        }
+    }
+}
+
+/** Buttons shared by every group header: ping all servers of the group, and open or close the server list. */
+internal data class GroupTools(
+    val expanded: Boolean,
+    val isTesting: Boolean,
+    val onToggleServers: () -> Unit,
+    val onPing: () -> Unit,
+)
+
+@Composable
+internal fun GroupToolButtons(tools: GroupTools) {
+    CardIconButton(
+        iconRes = if (tools.isTesting) R.drawable.ic_stop_24dp else R.drawable.ic_speed_24dp,
+        contentDescription = stringResource(if (tools.isTesting) R.string.acc_cancel_ping else R.string.acc_ping_servers),
+        onClick = tools.onPing,
+    )
+    val rotation by animateFloatAsState(if (tools.expanded) 180f else 0f, label = "serversArrow")
+    IconButton(onClick = tools.onToggleServers, modifier = Modifier.size(32.dp)) {
+        Icon(
+            painter = painterResource(R.drawable.ic_expand_more_24dp),
+            contentDescription = stringResource(if (tools.expanded) R.string.acc_hide_servers else R.string.acc_show_servers),
+            modifier = Modifier.size(24.dp).rotate(rotation),
+        )
+    }
+}
+
+/** Slim header for groups without subscription information, so the tools stay reachable. */
+@Composable
+internal fun GroupHeaderCard(title: String, tools: GroupTools, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = CARD_ALPHA),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+    ) {
+        Row(
+            Modifier.padding(start = 16.dp, end = 8.dp, top = 2.dp, bottom = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = title,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            GroupToolButtons(tools)
         }
     }
 }

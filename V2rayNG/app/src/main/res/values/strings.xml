@@ -577,4 +577,14 @@
     <string name="speed_format" translatable="false">↓ %1$s/s   ↑ %2$s/s</string>
     <string name="notification_channel_admin_messages">Messages from SabetNet</string>
     <string name="toast_smart_reconnect">Connection unstable, switching to another server</string>
+    <string name="connect_state_on">Connected</string>
+    <string name="connect_state_off">Disconnected</string>
+    <string name="acc_show_servers">Show servers</string>
+    <string name="acc_hide_servers">Hide servers</string>
+    <string name="acc_ping_servers">Test ping of all servers</string>
+    <string name="acc_cancel_ping">Stop ping test</string>
+    <string name="connect_server_none">No server selected</string>
+    <string name="connect_ping_failed">Timeout</string>
+    <string name="acc_toggle_vpn">Turn VPN on or off</string>
+    <string name="connect_ping_ms" translatable="false">%1$d ms</string>
 </resources>
