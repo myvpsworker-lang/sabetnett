@@ -34,7 +34,7 @@ data class MainUiState(
     val banners: List<RemoteBanner> = emptyList(),
     /** The single remote message dialog to show now (slides, emergency, what's new or announcement). */
     val remoteDialog: RemoteDialog = RemoteDialog.None,
-    /** Latest remote config (sponsors page, links, warnings, slides). */
+    /** Latest remote config (sponsors page, links, slides). */
     val sponsorsContent: RemoteConfig = RemoteConfig(),
     val showSponsors: Boolean = false,
     /** True while the server list is open; false shows the connect circle instead. */
@@ -43,6 +43,8 @@ data class MainUiState(
     val connectedSinceMs: Long? = null,
     /** Name of the selected server, for the connect panel. */
     val selectedServerName: String? = null,
+    /** Name of the group (subscription) the selected server belongs to. */
+    val selectedGroupName: String? = null,
     /** Last ping of the selected server in ms; negative means the last test failed, null means never tested. */
     val selectedPingMs: Long? = null,
 )

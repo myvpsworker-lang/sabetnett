@@ -156,16 +156,14 @@ class RemoteConfigParserTest {
     }
 
     @Test
-    fun parsesEmergencyWhatsNewWarningsAndSubscriptionLink() {
+    fun parsesEmergencyWhatsNewAndSubscriptionLink() {
         val c = RemoteConfigParser.parse(
             """{"emergency":{"enabled":true,"id":4,"title":"E","text":"down"},
                "whatsNew":{"versionCode":12,"title":"New","text":"stuff"},
-               "warnings":{"enabled":true,"expiryDays":99,"lowPercent":5},
                "links":{"subscriptionTelegram":"https://t.me/me"}}"""
         )!!
         assertEquals(RemoteEmergency(4, "E", "down", null), c.emergency)
         assertEquals(RemoteWhatsNew(12, "New", "stuff"), c.whatsNew)
-        assertEquals(RemoteWarnings(true, 60, 5), c.warnings)
         assertEquals("https://t.me/me", c.links.subscriptionTelegram)
     }
 }

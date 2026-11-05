@@ -55,8 +55,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.v2ray.ang.R
 import com.v2ray.ang.dto.LocateTarget
 import com.v2ray.ang.dto.entities.ProfileItem
-import com.v2ray.ang.handler.RemoteWarnings
-import com.v2ray.ang.handler.SubscriptionWarnings
 import com.v2ray.ang.dto.entities.SubscriptionUsageInfo
 import com.v2ray.ang.ui.compose.ReorderableGridItem
 import com.v2ray.ang.ui.compose.ReorderableListItem
@@ -88,7 +86,6 @@ fun GroupPagerPage(
     groupTitle: String,
     onOpenLink: (String) -> Unit,
     supportOverride: String?,
-    warnings: RemoteWarnings,
     panel: ConnectPanelModel,
     serversExpanded: Boolean,
     isTesting: Boolean,
@@ -115,9 +112,6 @@ fun GroupPagerPage(
         )
     }
     val layoutDirection = LocalLayoutDirection.current
-    val warning = remember(usageInfo, warnings) {
-        usageInfo?.let { SubscriptionWarnings.compute(it, warnings, System.currentTimeMillis()) }
-    }
     val tools = GroupTools(
         expanded = serversExpanded,
         isTesting = isTesting,
@@ -146,7 +140,6 @@ fun GroupPagerPage(
                 supportOverride = supportOverride,
                 tools = tools,
             )
-            if (warning != null) SubscriptionWarningCard(warning)
         } else {
             GroupHeaderCard(title = groupTitle, tools = tools)
         }

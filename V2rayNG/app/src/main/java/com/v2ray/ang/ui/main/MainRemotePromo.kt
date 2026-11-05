@@ -59,7 +59,6 @@ import com.v2ray.ang.handler.RemoteConfig
 import com.v2ray.ang.handler.RemoteDialog
 import com.v2ray.ang.handler.RemoteSlide
 import com.v2ray.ang.handler.RemoteSponsor
-import com.v2ray.ang.handler.SubscriptionWarning
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -316,33 +315,5 @@ fun OnboardingScreen(slides: List<RemoteSlide>, onFinish: () -> Unit) {
                 }
             }
         }
-    }
-}
-
-/** Warning strip shown above the server list when the subscription runs out soon. */
-@Composable
-fun SubscriptionWarningCard(warning: SubscriptionWarning) {
-    val text = when (warning) {
-        SubscriptionWarning.Expired -> stringResource(R.string.warn_expired)
-        SubscriptionWarning.ExpiresToday -> stringResource(R.string.warn_expiry_today)
-        is SubscriptionWarning.ExpiresIn -> stringResource(R.string.warn_expiry_days, warning.days)
-        is SubscriptionWarning.LowData -> stringResource(R.string.warn_low_data, warning.percentLeft)
-    }
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-            contentColor = MaterialTheme.colorScheme.onErrorContainer
-        )
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-        )
     }
 }

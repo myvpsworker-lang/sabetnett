@@ -568,10 +568,6 @@
     <string name="onboarding_skip">Keç</string>
     <string name="onboarding_next">Növbəti</string>
     <string name="onboarding_start">Başla</string>
-    <string name="warn_expired">Abunəliyinizin müddəti bitib</string>
-    <string name="warn_expiry_today">Abunəliyiniz bu gün bitir</string>
-    <string name="warn_expiry_days">Abunəliyiniz %1$d gün sonra bitir</string>
-    <string name="warn_low_data">Datanızın yalnız %1$d%% qalıb</string>
     <string name="acc_toggle_theme">Tünd/açıq temanı dəyiş</string>
     <string name="notification_channel_admin_messages">SabetNet mesajları</string>
     <string name="toast_smart_reconnect">Bağlantı qeyri-sabitdir, başqa serverə keçilir</string>

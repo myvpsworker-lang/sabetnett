@@ -566,10 +566,6 @@
     <string name="onboarding_skip">跳過</string>
     <string name="onboarding_next">下一步</string>
     <string name="onboarding_start">開始使用</string>
-    <string name="warn_expired">您的訂閱已到期</string>
-    <string name="warn_expiry_today">您的訂閱今天到期</string>
-    <string name="warn_expiry_days">您的訂閱將在 %1$d 天後到期</string>
-    <string name="warn_low_data">流量僅剩 %1$d%%</string>
     <string name="acc_toggle_theme">切換深色/淺色主題</string>
     <string name="notification_channel_admin_messages">SabetNet 訊息</string>
     <string name="toast_smart_reconnect">連線不穩定，正在切換到其他伺服器</string>

@@ -71,11 +71,12 @@ data class ConnectPanelModel(
     val isRunning: Boolean,
     val connectedSinceMs: Long?,
     val serverName: String?,
+    val groupName: String?,
     /** Negative means the last ping failed; null means the server was never pinged. */
     val pingMs: Long?,
 )
 
-fun MainUiState.toConnectPanelModel() = ConnectPanelModel(isRunning, connectedSinceMs, selectedServerName, selectedPingMs)
+fun MainUiState.toConnectPanelModel() = ConnectPanelModel(isRunning, connectedSinceMs, selectedServerName, selectedGroupName, selectedPingMs)
 
 /** Full-size panel for the collapsed state: big power circle, running time and the server card. */
 @Composable
@@ -168,14 +169,24 @@ private fun ServerPingCard(model: ConnectPanelModel) {
                     .background(if (model.isRunning) colorPing else MaterialTheme.colorScheme.outline)
             )
             Spacer(Modifier.width(12.dp))
-            Text(
-                text = model.serverName ?: stringResource(R.string.connect_server_none),
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = model.serverName ?: stringResource(R.string.connect_server_none),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (!model.groupName.isNullOrEmpty()) {
+                    Text(
+                        text = model.groupName,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
             Spacer(Modifier.width(8.dp))
             PingChip(model.pingMs)
         }

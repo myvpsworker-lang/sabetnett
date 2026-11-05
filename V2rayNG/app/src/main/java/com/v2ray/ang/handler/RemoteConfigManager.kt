@@ -48,7 +48,6 @@ data class RemotePush(val id: Int, val title: String, val text: String, val url:
 /** [accentArgb] is a validated opaque `#RRGGBB` accent for the app palette, or null for the built-in one. */
 data class RemoteTheme(val accentArgb: Int? = null)
 
-data class RemoteWarnings(val enabled: Boolean = false, val expiryDays: Int = 3, val lowPercent: Int = 10)
 
 data class RemoteDefaultSub(val name: String, val url: String)
 
@@ -80,7 +79,6 @@ data class RemoteConfig(
     val sponsorsIntro: String = "",
     val sponsors: List<RemoteSponsor> = emptyList(),
     val features: RemoteFeatures = RemoteFeatures(),
-    val warnings: RemoteWarnings = RemoteWarnings(),
     val defaultSub: RemoteDefaultSub? = null,
     val update: RemoteUpdate? = null,
     val support: RemoteLinkItem? = null,
@@ -121,7 +119,6 @@ object RemoteConfigParser {
 
         val page = root.obj("sponsorsPage")
         val feat = root.obj("features")
-        val warn = root.obj("warnings")
         val lk = root.obj("links")
         return RemoteConfig(
             banners = parseBanners(root),
@@ -162,11 +159,6 @@ object RemoteConfigParser {
                 ?.take(MAX_SPONSORS)
                 .orEmpty(),
             features = RemoteFeatures(feat?.bool("autoFastest") == true, feat?.bool("onboarding") == true, feat?.bool("smartReconnect") == true),
-            warnings = RemoteWarnings(
-                enabled = warn?.bool("enabled") == true,
-                expiryDays = (warn?.int("expiryDays") ?: 3).coerceIn(0, 60),
-                lowPercent = (warn?.int("lowPercent") ?: 10).coerceIn(0, 90),
-            ),
             defaultSub = root.obj("defaultSub")?.let { d ->
                 val url = d.str("url", 500)
                 if (d.bool("enabled") && SubscriptionInfoParser.sanitizeLink(url)?.startsWith("http", true) == true) {

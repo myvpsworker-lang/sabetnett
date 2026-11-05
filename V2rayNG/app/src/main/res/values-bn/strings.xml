@@ -568,10 +568,6 @@
     <string name="onboarding_skip">এড়িয়ে যান</string>
     <string name="onboarding_next">পরবর্তী</string>
     <string name="onboarding_start">শুরু করুন</string>
-    <string name="warn_expired">আপনার সাবস্ক্রিপশনের মেয়াদ শেষ</string>
-    <string name="warn_expiry_today">আপনার সাবস্ক্রিপশন আজ শেষ হচ্ছে</string>
-    <string name="warn_expiry_days">আপনার সাবস্ক্রিপশন %1$d দিনের মধ্যে শেষ হবে</string>
-    <string name="warn_low_data">আপনার ডেটার মাত্র %1$d%% বাকি</string>
     <string name="acc_toggle_theme">ডার্ক/লাইট থিম পরিবর্তন করুন</string>
     <string name="notification_channel_admin_messages">SabetNet বার্তা</string>
     <string name="toast_smart_reconnect">সংযোগ অস্থির, অন্য সার্ভারে পরিবর্তন করা হচ্ছে</string>

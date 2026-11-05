@@ -572,10 +572,6 @@
     <string name="onboarding_skip">Пропустить</string>
     <string name="onboarding_next">Далее</string>
     <string name="onboarding_start">Начать</string>
-    <string name="warn_expired">Срок подписки истёк</string>
-    <string name="warn_expiry_today">Подписка истекает сегодня</string>
-    <string name="warn_expiry_days">Подписка истекает через %1$d дн.</string>
-    <string name="warn_low_data">Осталось только %1$d%% трафика</string>
     <string name="acc_toggle_theme">Переключить тёмную/светлую тему</string>
     <string name="notification_channel_admin_messages">Сообщения SabetNet</string>
     <string name="toast_smart_reconnect">Соединение нестабильно, переключаемся на другой сервер</string>

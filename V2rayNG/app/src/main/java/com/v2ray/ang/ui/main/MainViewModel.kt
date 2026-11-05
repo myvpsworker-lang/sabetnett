@@ -1008,9 +1008,11 @@ class MainViewModel(
     /** Loads the selected server's name and last saved ping for the connect panel. */
     private fun loadSelectedInfo(guid: String?) {
         viewModelScope.launch(ioDispatcher) {
-            val name = guid?.let { dataSource.decodeServerConfig(it)?.remarks }
+            val profile = guid?.let { dataSource.decodeServerConfig(it) }
+            val name = profile?.remarks
+            val groupName = profile?.let { p -> uiState.value.groups.firstOrNull { it.id == p.subscriptionId }?.remarks }
             val ping = guid?.let { dataSource.decodeAffiliationInfo(it)?.testDelayMillis }?.takeIf { it != 0L }
-            _uiState.update { if (it.selectedGuid == guid) it.copy(selectedServerName = name, selectedPingMs = ping) else it }
+            _uiState.update { if (it.selectedGuid == guid) it.copy(selectedServerName = name, selectedGroupName = groupName, selectedPingMs = ping) else it }
         }
     }
 
