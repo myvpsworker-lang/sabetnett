@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -149,7 +150,7 @@ fun GroupPagerPage(
         } else {
             GroupHeaderCard(title = groupTitle, tools = tools)
         }
-        Box(Modifier.weight(1f).fillMaxWidth()) {
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
             if (serversExpanded) {
                 ServerListPage(
                     rows = groupState.rows,
@@ -171,6 +172,7 @@ fun GroupPagerPage(
                 ConnectPanelFull(
                     model = panel,
                     onToggle = onToggleConnection,
+                    availableHeight = maxHeight,
                     modifier = Modifier.align(Alignment.Center)
                 )
             }

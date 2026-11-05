@@ -17,11 +17,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -58,6 +61,10 @@ import com.v2ray.ang.ui.compose.colorPingRed
 import kotlinx.coroutines.delay
 
 private const val PING_SLOW_MS = 500L
+private val CIRCLE_MAX = 164.dp
+private val CIRCLE_MIN = 88.dp
+/** Height of everything in the full panel except the circle: status, timer, server card and paddings. */
+private val PANEL_FIXED_HEIGHT = 190.dp
 
 /** What the connect panel shows; built from [MainUiState] so the composables stay free of repositories. */
 data class ConnectPanelModel(
@@ -72,14 +79,20 @@ fun MainUiState.toConnectPanelModel() = ConnectPanelModel(isRunning, connectedSi
 
 /** Full-size panel for the collapsed state: big power circle, running time and the server card. */
 @Composable
-internal fun ConnectPanelFull(model: ConnectPanelModel, onToggle: () -> Unit, modifier: Modifier = Modifier) {
+internal fun ConnectPanelFull(model: ConnectPanelModel, onToggle: () -> Unit, availableHeight: Dp, modifier: Modifier = Modifier) {
+    // The circle shrinks when a warning card or a small screen leaves little height, so the server card is never cut off;
+    // the column also scrolls as a last resort.
+    val circle = (availableHeight - PANEL_FIXED_HEIGHT).coerceIn(CIRCLE_MIN, CIRCLE_MAX)
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .heightIn(min = availableHeight)
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
-        PowerCircle(model.isRunning, size = 164.dp, iconSize = 56.dp, onClick = onToggle)
+        PowerCircle(model.isRunning, size = circle, iconSize = circle / 3, onClick = onToggle)
         Spacer(Modifier.height(18.dp))
         Text(
             text = stringResource(if (model.isRunning) R.string.connect_state_on else R.string.connect_state_off),
