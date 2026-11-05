@@ -288,6 +288,7 @@ fun MainScreen(
                             panel = uiState.toConnectPanelModel(),
                             serversExpanded = uiState.serversExpanded,
                             isTesting = uiState.isTesting,
+                            onToggleConnection = { onAction(MainAction.ToggleService) },
                             contentPadding = PaddingValues(
                                 start = 0.dp,
                                 top = 4.dp,

@@ -89,6 +89,8 @@ fun GroupPagerPage(
     panel: ConnectPanelModel,
     serversExpanded: Boolean,
     isTesting: Boolean,
+    // The service toggle is handled by the Activity (permissions, VPN consent), so it comes in as a callback.
+    onToggleConnection: () -> Unit,
     contentPadding: PaddingValues
 ) {
     val groupStateFlow = remember(groupId) {
@@ -120,7 +122,6 @@ fun GroupPagerPage(
             mainViewModel.onAction(if (isTesting) MainAction.CancelTesting else MainAction.TestRealAllServers)
         },
     )
-    val onToggleConnection = { mainViewModel.onAction(MainAction.ToggleService) }
     val bottomInset = contentPadding.calculateBottomPadding()
     // The compact connect panel sits above the bottom bar, so the list ends where the panel begins.
     val listPadding = PaddingValues(
