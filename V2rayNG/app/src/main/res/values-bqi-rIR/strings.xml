@@ -580,4 +580,6 @@
     <string name="connect_server_none">سروری انتخاب نبیه</string>
     <string name="connect_ping_failed">ناموفق</string>
     <string name="acc_toggle_vpn">روشن یا خاموش کردن وی‌پی‌ان</string>
+    <string name="connect_state_connecting">در حال وصل بیدن…</string>
+    <string name="connect_state_disconnecting">در حال قطع بیدن…</string>
 </resources>

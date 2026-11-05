@@ -580,4 +580,6 @@
     <string name="connect_server_none">Server seçilməyib</string>
     <string name="connect_ping_failed">Vaxt bitdi</string>
     <string name="acc_toggle_vpn">VPN-i aç və ya bağla</string>
+    <string name="connect_state_connecting">Qoşulur…</string>
+    <string name="connect_state_disconnecting">Ayrılır…</string>
 </resources>

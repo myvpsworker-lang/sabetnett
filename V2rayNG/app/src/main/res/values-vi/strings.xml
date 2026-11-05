@@ -578,4 +578,6 @@
     <string name="connect_server_none">Chưa chọn máy chủ</string>
     <string name="connect_ping_failed">Hết thời gian</string>
     <string name="acc_toggle_vpn">Bật hoặc tắt VPN</string>
+    <string name="connect_state_connecting">Đang kết nối…</string>
+    <string name="connect_state_disconnecting">Đang ngắt kết nối…</string>
 </resources>

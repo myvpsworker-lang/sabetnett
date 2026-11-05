@@ -584,4 +584,6 @@
     <string name="connect_server_none">Сервер не выбран</string>
     <string name="connect_ping_failed">Таймаут</string>
     <string name="acc_toggle_vpn">Включить или выключить VPN</string>
+    <string name="connect_state_connecting">Подключение…</string>
+    <string name="connect_state_disconnecting">Отключение…</string>
 </resources>

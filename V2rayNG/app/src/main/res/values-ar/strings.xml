@@ -588,4 +588,6 @@
     <string name="connect_server_none">لم يتم اختيار خادم</string>
     <string name="connect_ping_failed">انتهت المهلة</string>
     <string name="acc_toggle_vpn">تشغيل أو إيقاف VPN</string>
+    <string name="connect_state_connecting">جارٍ الاتصال…</string>
+    <string name="connect_state_disconnecting">جارٍ قطع الاتصال…</string>
 </resources>

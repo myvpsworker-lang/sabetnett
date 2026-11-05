@@ -580,4 +580,6 @@
     <string name="connect_server_none">কোনো সার্ভার নির্বাচিত নয়</string>
     <string name="connect_ping_failed">সময় শেষ</string>
     <string name="acc_toggle_vpn">VPN চালু বা বন্ধ করুন</string>
+    <string name="connect_state_connecting">সংযোগ হচ্ছে…</string>
+    <string name="connect_state_disconnecting">সংযোগ বিচ্ছিন্ন হচ্ছে…</string>
 </resources>

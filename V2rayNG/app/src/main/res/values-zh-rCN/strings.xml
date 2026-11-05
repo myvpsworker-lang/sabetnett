@@ -578,4 +578,6 @@
     <string name="connect_server_none">未选择服务器</string>
     <string name="connect_ping_failed">超时</string>
     <string name="acc_toggle_vpn">开启或关闭 VPN</string>
+    <string name="connect_state_connecting">正在连接…</string>
+    <string name="connect_state_disconnecting">正在断开…</string>
 </resources>

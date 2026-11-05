@@ -4,12 +4,15 @@ import android.os.SystemClock
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -43,6 +47,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -61,6 +67,7 @@ import com.v2ray.ang.ui.compose.colorPingRed
 import kotlinx.coroutines.delay
 
 private const val PING_SLOW_MS = 500L
+private const val PENDING_TIMEOUT_MS = 8000L
 private val CIRCLE_MAX = 164.dp
 private val CIRCLE_MIN = 88.dp
 /** Height of everything in the full panel except the circle: status, timer, server card and paddings. */
@@ -93,13 +100,21 @@ internal fun ConnectPanelFull(model: ConnectPanelModel, onToggle: () -> Unit, av
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        PowerCircle(model.isRunning, size = circle, iconSize = circle / 3, onClick = onToggle)
+        val toggle = rememberOptimisticToggle(model.isRunning, onToggle)
+        PowerCircle(toggle.shownOn, toggle.busy, size = circle, iconSize = circle / 3, onClick = toggle.onClick)
         Spacer(Modifier.height(18.dp))
         Text(
-            text = stringResource(if (model.isRunning) R.string.connect_state_on else R.string.connect_state_off),
+            text = stringResource(
+                when {
+                    toggle.busy && toggle.shownOn -> R.string.connect_state_connecting
+                    toggle.busy -> R.string.connect_state_disconnecting
+                    model.isRunning -> R.string.connect_state_on
+                    else -> R.string.connect_state_off
+                }
+            ),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            color = if (model.isRunning) colorPing else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (toggle.shownOn) colorPing else MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             text = rememberElapsedText(model.connectedSinceMs),
@@ -128,7 +143,8 @@ internal fun ConnectPanelCompact(model: ConnectPanelModel, onToggle: () -> Unit,
             Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            PowerCircle(model.isRunning, size = 48.dp, iconSize = 22.dp, onClick = onToggle, pulse = false)
+            val toggle = rememberOptimisticToggle(model.isRunning, onToggle)
+            PowerCircle(toggle.shownOn, toggle.busy, size = 48.dp, iconSize = 22.dp, onClick = toggle.onClick, pulse = false)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
@@ -214,18 +230,23 @@ private fun PingChip(pingMs: Long?) {
 
 /** Round on/off button: gradient and a soft pulse ring while connected, muted while disconnected. */
 @Composable
-private fun PowerCircle(isRunning: Boolean, size: Dp, iconSize: Dp, onClick: () -> Unit, pulse: Boolean = true) {
+private fun PowerCircle(isRunning: Boolean, busy: Boolean, size: Dp, iconSize: Dp, onClick: () -> Unit, pulse: Boolean = true) {
     val colors = MaterialTheme.colorScheme
+    val haptics = LocalHapticFeedback.current
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(if (pressed) 0.93f else 1f, label = "powerPress")
     val brush = if (isRunning) {
         Brush.linearGradient(listOf(colorConnectGradientStart, colorConnectGradientEnd))
     } else {
         Brush.linearGradient(listOf(colors.surfaceVariant, colors.surfaceContainerHighest))
     }
     Box(contentAlignment = Alignment.Center) {
-        if (isRunning && pulse) PulseRing(size)
+        if ((isRunning || busy) && pulse) PulseRing(size)
         Box(
             modifier = Modifier
                 .size(size)
+                .scale(pressScale)
                 .shadow(
                     elevation = if (isRunning) 14.dp else 4.dp,
                     shape = CircleShape,
@@ -234,7 +255,10 @@ private fun PowerCircle(isRunning: Boolean, size: Dp, iconSize: Dp, onClick: () 
                 )
                 .clip(CircleShape)
                 .background(brush)
-                .clickable(role = Role.Switch, onClick = onClick),
+                .clickable(interactionSource = interaction, indication = null, role = Role.Switch) {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onClick()
+                },
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -268,6 +292,33 @@ private fun PulseRing(size: Dp) {
             .scale(scale)
             .graphicsLayer { this.alpha = alpha }
             .background(colorConnectGradientEnd, CircleShape)
+    )
+}
+
+/**
+ * Makes a tap feel instant: the circle flips to its target look immediately while the service starts or
+ * stops, and falls back to the real state when it arrives or after [PENDING_TIMEOUT_MS] (for example when
+ * the VPN permission dialog is declined). Purely visual; the real toggle still goes through [onToggle].
+ */
+private class OptimisticToggle(val shownOn: Boolean, val busy: Boolean, val onClick: () -> Unit)
+
+@Composable
+private fun rememberOptimisticToggle(isRunning: Boolean, onToggle: () -> Unit): OptimisticToggle {
+    var pending by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(isRunning) { pending = null }
+    LaunchedEffect(pending) {
+        if (pending != null) {
+            delay(PENDING_TIMEOUT_MS)
+            pending = null
+        }
+    }
+    return OptimisticToggle(
+        shownOn = pending ?: isRunning,
+        busy = pending != null,
+        onClick = {
+            pending = !isRunning
+            onToggle()
+        },
     )
 }
 
