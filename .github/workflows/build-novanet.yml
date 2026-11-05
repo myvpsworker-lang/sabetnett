@@ -169,4 +169,5 @@ jobs:
       if: ${{ success() }}
       with:
         name: SabetNet-apks
+        retention-days: 3
         path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/playstore/release/*.apk
