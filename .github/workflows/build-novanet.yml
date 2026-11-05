@@ -8,7 +8,7 @@ on:
       - master
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   # Native sources, pinned to the exact revisions this v2rayNG snapshot was built against.
@@ -164,9 +164,22 @@ jobs:
           echo "::notice::Unit tests passed"
         fi
 
+    # The Actions artifact quota can be exhausted by large APKs; a release asset is not counted against it,
+    # so the newest build is also published as the (private-repo) pre-release "latest-build".
+    - name: Publish APKs as latest-build release
+      if: ${{ success() }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release delete latest-build --cleanup-tag --yes || true
+        gh release create latest-build --prerelease --target "$GITHUB_SHA" \
+          --title "Latest build" --notes "Build of ${GITHUB_SHA::7}" \
+          "${{ github.workspace }}"/V2rayNG/app/build/outputs/apk/playstore/release/*.apk
+
     - name: Upload APKs
       uses: actions/upload-artifact@v7
       if: ${{ success() }}
+      continue-on-error: true
       with:
         name: SabetNet-apks
         retention-days: 3
